@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition;
+  }
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 transition;
+  }
+  .input {
+    @apply border border-gray-300 px-3 py-2 rounded shadow-sm;
+  }
+  .input-bordered {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-400;
+  }
+}
+html {
+  font-size: 12px; /* default is 16px */
+}
