@@ -3,22 +3,41 @@ import { useState } from 'react';
 import LoginPage from './Auth/Login';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
-import Dashboard from './Pages/Dashboard';
 import FalloutDashboard from './Pages/FalloutDashboard';
+import ScriptHistory from './Pages/ScriptHistory';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
-
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken'); // or 'isLoggedIn'
+    const isLoginPage = location.pathname === '/login';
+
+    if (!token && !isLoginPage) {
+      navigate('/login');
+    }
+  }, [location, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar sidebarOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      {!isLoginPage && (
+        <Navbar
+          sidebarOpen={sidebarOpen}
+          toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {!isLoginPage && (
-          <Sidebar isOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+          <Sidebar
+            isOpen={sidebarOpen}
+            toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          />
         )}
 
         <main
@@ -27,18 +46,16 @@ function App() {
             marginLeft: !isLoginPage ? (sidebarOpen ? '256px' : '64px') : 0,
           }}
         >
-
-
+          {/* ⛳️ Always render routes, even on login page */}
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<FalloutDashboard />} />
-            {/* Add other routes here */}
+            <Route path="/history" element={<ScriptHistory />} />
           </Routes>
         </main>
       </div>
     </div>
   );
 }
-
 
 export default App;

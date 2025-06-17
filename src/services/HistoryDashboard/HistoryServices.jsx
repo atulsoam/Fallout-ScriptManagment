@@ -1,13 +1,11 @@
 // services/falloutService.js
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000/api';
-// const API_BASE = 'https://asat-order-resolution-platform-ms-test1.rke-odc-test.corp.intranet/api';
+import { API_BASE } from '../../utils/Config'; // Adjust the import path as needed
 
-
-export const fetchFalloutData = async ({ page = 1, pageSize = 100, filters = {} }) => {
+export const HistoryData = async ({ page = 1, pageSize = 100, filters = {} }) => {
   try {
-    const response = await axios.get(`${API_BASE}/Api/data`, {
+    const response = await axios.get(`${API_BASE}/getscriptHistory`, {
       params: {
         page,
         pageSize,
