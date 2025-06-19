@@ -7,7 +7,7 @@ import FalloutDashboard from './Pages/FalloutDashboard';
 import ScriptHistory from './Pages/ScriptHistory';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import ScriptUploader from './Pages/ScriptUploader';
 function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
@@ -51,6 +51,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<FalloutDashboard />} />
             <Route path="/history" element={<ScriptHistory />} />
+            <Route path="/upload" element={<ScriptUploader />} />
+
           </Routes>
         </main>
       </div>
