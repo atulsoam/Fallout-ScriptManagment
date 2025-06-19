@@ -13,7 +13,7 @@ def create_app():
     Session(app)
     mongo.init_app(app)
 
-    from app.routes import script_routes, auth  # <-- add this line
+    from app.routes import script_routes, auth,ScriptUploader  # <-- add this line
 
     app.register_blueprint(script_routes)
 
