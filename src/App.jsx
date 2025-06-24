@@ -8,6 +8,8 @@ import ScriptHistory from './Pages/ScriptHistory';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScriptUploader from './Pages/ScriptUploader';
+import ScriptRunner from './Pages/ScriptRunner';
+
 function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
@@ -52,6 +54,7 @@ function App() {
             <Route path="/" element={<FalloutDashboard />} />
             <Route path="/history" element={<ScriptHistory />} />
             <Route path="/upload" element={<ScriptUploader />} />
+            <Route path="/scriptRunner" element={<ScriptRunner />} />
 
           </Routes>
         </main>
