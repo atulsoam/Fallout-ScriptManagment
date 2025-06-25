@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaBars, FaHome, FaSignOutAlt, FaChartBar, FaHistory, FaUpload, FaPlay } from 'react-icons/fa';
+import { FaBars, FaHome, FaSignOutAlt, FaChartBar, FaHistory, FaUpload, FaPlay,FaTimes } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
 import colors from '../utils/Colors'; // Adjust path if needed
 
@@ -10,6 +10,8 @@ const navItems = [
     { to: '/history', label: 'History', icon: FaHistory },
     { to: '/upload', label: 'Upload', icon: FaUpload },
     { to: '/scriptRunner', label: 'Run', icon: FaPlay },
+        { to: '/SchedulerPage', label: 'SchedulerPage', icon: FaTimes },
+
 
 
 

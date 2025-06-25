@@ -11,6 +11,8 @@ import ScriptUploader from './Pages/ScriptUploader';
 import ScriptRunner from './Pages/ScriptRunner';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import SchedulerPage from "./Pages/ScriptScheduler"
+
 function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
@@ -56,6 +58,7 @@ function App() {
             <Route path="/history" element={<ScriptHistory />} />
             <Route path="/upload" element={<ScriptUploader />} />
             <Route path="/scriptRunner" element={<ScriptRunner />} />
+            <Route path="/SchedulerPage" element={<SchedulerPage />} />
 
           </Routes>
         </main>

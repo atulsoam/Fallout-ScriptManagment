@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify, current_app
 from app import mongo,socketio,Session
 from app.services.script_executor import run_script as executeScript,stop_script,get_running_scripts
 import datetime
-import uuid
 from app.routes import script_routes
 from bson import ObjectId
 
@@ -33,6 +32,7 @@ def run_script():
         "collectionName": script_name,
         "scriptType": script_doc.get("scriptType", "NA"),
         "user": loggedInUser,
+        "ExecutedFrom":"ManualRun",
         "startTime": datetime.datetime.now(),
         "scriptSubType": script_doc.get("scriptSubType", "NA"),
         "createdAt": str(datetime.datetime.now().date()),
@@ -44,10 +44,11 @@ def run_script():
         }
     })
 
-    # ✅ Run the script with the string exec_id
     executeScript(script_name, script_code, exec_id, mongo.db.RunningScript)
 
     return jsonify({"message": "Script started", "execId": exec_id}), 200
+
+
 @script_routes.route('/running-scripts', methods=['GET'])
 def list_running_scripts():
     running = get_running_scripts()

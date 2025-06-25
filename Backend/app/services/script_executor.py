@@ -45,6 +45,8 @@ def update_running_script_status(docid, script_name, status,executions_collectio
 def run_script(script_name, script_code, exec_id, executions_collection):
 
     def execute():
+        start_time = datetime.datetime.now()  # ⏱️ Capture start time
+
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.py', mode='w') as temp_file:
                 temp_file.write(script_code + f"\n\nmain('{exec_id}')\n")  # Inject main(exec_id)
@@ -102,20 +104,24 @@ def run_script(script_name, script_code, exec_id, executions_collection):
 
                 stream.close()
 
-
-
-            # Start threads for stdout and stderr
             stdout_thread = threading.Thread(target=stream_output, args=(proc.stdout, "stdout"))
             stderr_thread = threading.Thread(target=stream_output, args=(proc.stderr, "stderr"))
             stdout_thread.start()
             stderr_thread.start()
 
-            # Wait for process and logging threads to finish
             proc.wait()
             stdout_thread.join()
             stderr_thread.join()
 
             status = "Completed" if proc.returncode == 0 else "Terminated"
+            end_time = datetime.datetime.now()  
+            duration = (end_time - start_time).total_seconds()
+            executions_collection.update_one(
+            {"_id": str(exec_id)},
+            {"$set": {
+                "Duration": str(duration)
+            }}
+            )
             update_running_script_status(exec_id, script_name, status,executions_collection)
 
         except Exception as e:

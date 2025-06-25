@@ -23,8 +23,8 @@ export default function LoginPage() {
 
         try {
             const response = await login({ cuid, password });
-            console.log("Login successful:", response);
-            localStorage.setItem('authToken', response.user); // or set a flag like 'isLoggedIn'
+            console.log("Login successful:", response.user);
+            localStorage.setItem("authToken", JSON.stringify(response.user));
 
             navigate('/'); // ⬅️ redirect here
             // You can redirect here, e.g., using navigate or window.location
