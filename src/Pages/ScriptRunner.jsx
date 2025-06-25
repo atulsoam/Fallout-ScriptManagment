@@ -1,174 +1,142 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { API_BASE } from '../utils/Config';
-
-import Notification from '../Components/ScriptRunner/Notification';
+import React, { useEffect, useState } from 'react';
 import ScriptSelector from '../Components/ScriptRunner/ScriptSelector';
 import RunningScriptList from '../Components/ScriptRunner/RunningScriptList';
-import { io } from "socket.io-client";
+import LoadingOverlay from '../Components/LoadingOverlay';
+import { io } from 'socket.io-client';
+import { toast } from 'react-toastify';
 
-// Ensure this matches your backend address
-const socket = io("http://localhost:5000", {
-  transports: ["websocket"]
+import {
+  getScripts,
+  getRunningScripts,
+  runScript as apiRunScript,
+  terminateScript as apiTerminateScript,
+} from '../services/ScriptRunner/ScriptRunnerServices';
+
+const socket = io('http://localhost:5000', { transports: ['websocket'] });
+
+socket.on('connect', () => {
+  console.log('✅ Socket connected');
 });
-
-socket.on("connect", () => {
-  console.log("✅ Socket connected");
-});
-
-// socket.on("log_update", (data) => {
-//   console.log("📥 Log update:", data);
-// });
-
 
 function ScriptRunner() {
-
-  useEffect(() => {
-    socket.on("log_update", (data) => {
-      // console.log(data)
-      const { exec_id, script_name, line } = data;
-      // console.log(`[${exec_id}] ${line.text}`);
-      // Append line.text to your UI
-    });
-  }, [])
-
+  const notifySuccess = (msg) => toast.success(msg);
+  const notifyError = (msg) => toast.error(msg);
   const [scripts, setScripts] = useState([]);
   const [selectedScript, setSelectedScript] = useState('');
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [running, setRunning] = useState(false);
-  const [message, setMessage] = useState(null); // { type, text }
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [message, setMessage] = useState(null);
   const [runningScripts, setRunningScripts] = useState([]);
   const [logs, setLogs] = useState({});
-  useEffect(() => {
-    socket.on("log_update", (data) => {
-      const { exec_id, line } = data;
 
+  useEffect(() => {
+    socket.on('log_update', (data) => {
+      const { exec_id, line } = data;
       const MAX_LOG_LINES = 100;
 
-
-      setLogs(prev => {
+      setLogs((prev) => {
         const updated = { ...prev };
         if (!updated[exec_id]) updated[exec_id] = [];
-        updated[exec_id] = [...updated[exec_id], { text: line.text, timestamp: line.timestamp || new Date().toISOString() }];
-        // Keep only last MAX_LOG_LINES lines
+        updated[exec_id] = [
+          ...updated[exec_id],
+          { text: line.text, timestamp: line.timestamp || new Date().toISOString() },
+        ];
         if (updated[exec_id].length > MAX_LOG_LINES) {
           updated[exec_id] = updated[exec_id].slice(-MAX_LOG_LINES);
         }
         return updated;
       });
-
-
     });
 
-    return () => socket.off("log_update"); // Cleanup
+    return () => socket.off('log_update');
   }, []);
 
-
-  // Fetch scripts on mount
   useEffect(() => {
     setLoadingScripts(true);
-    fetch(`${API_BASE}/scripts`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data);
-
-        setScripts(data);
-        // if (data.length > 0) setSelectedScript(data[0].id);
+    getScripts(setGlobalLoading)
+      .then((res) => {
+        setScripts(res.data);
       })
-      .catch(() => setMessage({ type: 'error', text: 'Failed to load scripts' }))
+      .catch(() => notifyError("Failed to load scripts"))
       .finally(() => setLoadingScripts(false));
   }, []);
+
   const fetchRunningScripts = () => {
-    fetch(`${API_BASE}/running-scripts`)
-      .then((res) => res.json())
-      .then((data) => setRunningScripts(data))
+    getRunningScripts(setGlobalLoading)
+      .then((res) => setRunningScripts(res.data))
       .catch(() => { });
   };
-  // Fetch running scripts periodically
+
   useEffect(() => {
-
-
     fetchRunningScripts();
-    // const interval = setInterval(fetchRunningScripts, 5000);
-    // return () => clearInterval(interval);
   }, []);
 
-
-
-
-
-  const runScript = () => {
-    console.log(selectedScript);
-
+  const handleRunScript = () => {
     if (!selectedScript) {
-      setMessage({ type: 'error', text: 'Please select a script.' });
+      notifyError("Please select a script to run!")
       return;
     }
     setRunning(true);
     setMessage(null);
 
-    fetch(`${API_BASE}/run-script`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scriptName: selectedScript }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to run script');
-        return res.json();
-      })
+    apiRunScript(selectedScript)
       .then(() => {
-        setMessage({ type: 'success', text: 'Script started successfully.' });
-        fetchRunningScripts()
+        notifySuccess("Script started successfully.")
+        fetchRunningScripts();
       })
-      .catch((e) => setMessage({ type: 'error', text: e.message }))
+      .catch((e) => notifyError(e.message))
       .finally(() => setRunning(false));
   };
 
-  const terminateScript = (scriptId) => {
+  const handleTerminateScript = (scriptId) => {
     setMessage(null);
-    fetch(`${API_BASE}/stop`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ execId: scriptId }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to terminate script');
-        return res.json();
-      })
+    apiTerminateScript(scriptId, setGlobalLoading)
       .then(() => {
-        setMessage({ type: 'success', text: 'Script terminated successfully.' });
+        notifySuccess("Script terminated successfully.")
         setRunningScripts((prev) => prev.filter((s) => s.id !== scriptId));
-        // setLogs((prev) => {
-        //   const copy = { ...prev };
-        //   delete copy[scriptId];
-        //   return copy;
-        // });
-
       })
-      .catch((e) => setMessage({ type: 'error', text: e.message }));
+      .catch((e) => notifyError(e.message));
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <Notification message={message} />
+    <div className="relative max-w-7xl mx-auto px-6 py-10 sm:px-8 space-y-10 bg-gray-50 min-h-screen">
+      {globalLoading && <LoadingOverlay />}
+
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Script Runner</h1>
+        <p className="text-sm text-gray-500 mt-1">Run and manage your scripts in real-time.</p>
+      </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
+          {/* <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200"> */}
+          {/* <h2 className="text-lg font-semibold text-gray-700 mb-4">Select Script</h2> */}
           <ScriptSelector
             scripts={scripts}
             selectedScript={selectedScript}
             setSelectedScript={setSelectedScript}
-            onRun={runScript}
+            onRun={handleRunScript}
             loading={loadingScripts}
             running={running}
           />
+          {/* </div> */}
         </div>
 
         <div className="md:col-span-2">
-          <RunningScriptList
-            runningScripts={runningScripts}
-            logs={logs}
-            onTerminate={terminateScript}
-          />
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">Running Scripts</h2>
+            {runningScripts.length === 0 ? (
+              <p className="text-sm text-gray-400">No scripts are currently running.</p>
+            ) : (
+              <RunningScriptList
+                runningScripts={runningScripts}
+                logs={logs}
+                onTerminate={handleTerminateScript}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

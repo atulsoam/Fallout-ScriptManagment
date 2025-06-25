@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                         className={({ isActive }) =>
                             `flex items-center gap-3 px-3 py-2 mx-1 my-1 rounded-md text-sm transition-colors
      ${isActive
-                                ? `bg-[${colors.secondary}] text-white`
+                                ? `bg-[#A78BFA] text-white`
                                 : `text-[${colors.textPrimary}] hover:bg-gray-100 hover:text-[${colors.primary}]`
                             }`
                         }

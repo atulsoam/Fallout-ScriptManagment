@@ -9,7 +9,8 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScriptUploader from './Pages/ScriptUploader';
 import ScriptRunner from './Pages/ScriptRunner';
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
@@ -59,6 +60,18 @@ function App() {
           </Routes>
         </main>
       </div>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </div>
   );
 }

@@ -1,31 +1,52 @@
 import React from 'react';
 
-export default function ScriptSelector({ scripts, selectedScript, setSelectedScript, onRun, loading, running }) {
+export default function ScriptSelector({
+  scripts,
+  selectedScript,
+  setSelectedScript,
+  onRun,
+  loading,
+  running,
+}) {
   return (
-    <div className="space-y-4">
-      <h1 className="text-3xl font-bold">Run Script</h1>
+    <div className="space-y-6 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+      <label
+        htmlFor="script-select"
+        className="block text-lg font-semibold text-gray-700 mb-2"
+      >
+        Select a Script
+      </label>
       <select
-        className="w-full border rounded p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        id="script-select"
+        className={`w-full border rounded-lg p-3 text-lg transition
+          focus:outline-none focus:ring-2 focus:ring-blue-500
+          ${loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
         value={selectedScript}
         onChange={(e) => setSelectedScript(e.target.value)}
         disabled={loading}
+        aria-disabled={loading}
+        aria-label="Select script to run"
       >
-                  <option>SelectScript</option>
+        <option value="" disabled>
+          {loading ? 'Loading scripts...' : 'Select a script'}
+        </option>
 
-        {loading ? (
-          <option>Loading scripts...</option>
-        ) : (
+        {!loading &&
           scripts.map((script) => (
             <option key={script} value={script}>
               {script}
             </option>
-          ))
-        )}
+          ))}
       </select>
+
       <button
-        className="w-full bg-blue-600 text-white p-3 rounded text-lg hover:bg-blue-700 disabled:opacity-50 flex justify-center items-center space-x-2"
-        disabled={running || loading}
+        className={`w-full bg-blue-600 text-white p-3 rounded-lg text-lg flex justify-center items-center space-x-3
+          hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300
+          disabled:opacity-50 disabled:cursor-not-allowed transition`}
+        disabled={running || loading || !selectedScript}
         onClick={onRun}
+        aria-busy={running}
+        aria-disabled={running || loading || !selectedScript}
       >
         {running && (
           <svg
@@ -33,6 +54,7 @@ export default function ScriptSelector({ scripts, selectedScript, setSelectedScr
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"

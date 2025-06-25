@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LogViewer from './LogViewer';
 
 function formatDuration(startTime) {
@@ -11,55 +11,93 @@ function formatDuration(startTime) {
 
 export default function RunningScriptItem({ script, logs, onTerminate }) {
   const [expanded, setExpanded] = useState(false);
+  const [duration, setDuration] = useState(formatDuration(script.StartedAt));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDuration(formatDuration(script.StartedAt));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [script.StartedAt]);
+
+  const scriptName = script.script_name || script.name;
+  const execId = script.execId;
 
   return (
-    <div className="bg-white border rounded shadow hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-center p-4 border-b">
-        <div className="flex items-center space-x-3">
-          <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-          <div>
-            <p className="font-semibold text-lg">{script.name}</p>
-            <p className="text-sm text-gray-500">
-              Started: {new Date(script.startedAt).toLocaleString()}
-            </p>
-            <p className="text-xs text-gray-400">
-              Running for: {formatDuration(script.startedAt)} {script.execId}
-            </p>
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 transition-all mb-6 overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-start p-6 border-b">
+        <div className="flex items-start space-x-4">
+          <span className="w-3 h-3 mt-1 rounded-full bg-green-500 animate-pulse" />
+
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-gray-800">
+              {scriptName}
+            </h2>
+
+            <div className="text-sm text-gray-500">
+              <p>Started: <span className="font-medium">{new Date(script.StartedAt).toLocaleString()}</span></p>
+              <p className="text-gray-400 animate-pulse">Running for: {duration}</p>
+              {script.scriptName && (
+                <p className="text-xs italic text-gray-500">Script ref: {script.scriptName}</p>
+              )}
+            </div>
+
+            <div className="mt-2">
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                Exec ID: {execId}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="px-3 py-1 border rounded hover:bg-gray-100 text-gray-600"
-            aria-expanded={expanded}
-            aria-controls={`logs-${script.execId}`}
-          >
-            {expanded ? 'Hide Logs' : 'Show Logs'}
-          </button>
+        {/* Actions */}
+        <div className="flex flex-col items-end space-y-2">
+          
 
           <button
-            onClick={() => onTerminate(script.execId)}
-            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 flex items-center space-x-1 disabled:opacity-50"
+            onClick={() => onTerminate(execId)}
+            className="inline-flex items-center text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded shadow-sm transition"
           >
             <svg
-              className="h-4 w-4"
+              className="w-4 h-4 mr-1"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeWidth={2}
               viewBox="0 0 24 24"
             >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-            <span>Terminate</span>
+            Terminate
+          </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition"
+          >
+            {expanded ? 'Hide Logs' : 'Show Logs'}
+            <svg
+              className={`ml-1 w-4 h-4 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {expanded && <LogViewer logs={logs} />}
+      {/* Log Panel */}
+      <div
+        className={`transition-all duration-300 ease-in-out ${
+          expanded ? 'max-h-[500px] p-4' : 'max-h-0 overflow-hidden'
+        } bg-gray-50 border-t`}
+        id={`logs-${execId}`}
+      >
+        <LogViewer logs={logs} />
+      </div>
     </div>
   );
 }

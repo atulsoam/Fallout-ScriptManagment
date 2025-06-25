@@ -62,6 +62,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
             running_processes[exec_id] = {
                 "process": proc,
                 "scriptName": script_name,
+                "StartedAt":str(datetime.datetime.now())
             }
 
             def stream_output(stream, stream_name):
@@ -186,7 +187,8 @@ def get_running_scripts():
         if proc.poll() is None:
             running.append({
                 "execId": exec_id,
-                "scriptName": info.get("scriptName", "Unknown")
+                "scriptName": info.get("scriptName", "Unknown"),
+                "StartedAt":info.get("StartedAt",datetime.datetime.now())
             })
     return running
 

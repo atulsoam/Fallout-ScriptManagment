@@ -35,7 +35,13 @@ def run_script():
         "user": loggedInUser,
         "startTime": datetime.datetime.now(),
         "scriptSubType": script_doc.get("scriptSubType", "NA"),
-        "createdAt": str(datetime.datetime.now().date())
+        "createdAt": str(datetime.datetime.now().date()),
+        "statusList":{
+            "Fixed":0,
+            "Not Fixed":0,
+            "processedAccounts":0,
+            "Total":0
+        }
     })
 
     # ✅ Run the script with the string exec_id
