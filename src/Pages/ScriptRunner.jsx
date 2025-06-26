@@ -4,7 +4,7 @@ import RunningScriptList from '../Components/ScriptRunner/RunningScriptList';
 import LoadingOverlay from '../Components/LoadingOverlay';
 import { io } from 'socket.io-client';
 import { toast } from 'react-toastify';
-
+import { API_BASE } from '../utils/Config';
 import {
   getScripts,
   getRunningScripts,
@@ -12,7 +12,7 @@ import {
   terminateScript as apiTerminateScript,
 } from '../services/ScriptRunner/ScriptRunnerServices';
 
-const socket = io('http://localhost:5000', { transports: ['websocket'] });
+const socket = io(API_BASE, { transports: ['websocket'] });
 
 socket.on('connect', () => {
   console.log('✅ Socket connected');
@@ -56,9 +56,14 @@ function ScriptRunner() {
     setLoadingScripts(true);
     getScripts(setGlobalLoading)
       .then((res) => {
-        setScripts(res.data);
+        const Apidata = res.data
+        const listOFscript = Apidata.map(script => script.name)
+        setScripts(listOFscript);
       })
-      .catch(() => notifyError("Failed to load scripts"))
+      .catch((e) => {
+        console.log(e);
+        
+        notifyError("Failed to load scripts")})
       .finally(() => setLoadingScripts(false));
   }, []);
 

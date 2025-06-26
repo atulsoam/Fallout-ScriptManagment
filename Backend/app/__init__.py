@@ -3,7 +3,7 @@ from flask_pymongo import PyMongo
 from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler # type: ignore
 
 socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
 mongo = PyMongo()

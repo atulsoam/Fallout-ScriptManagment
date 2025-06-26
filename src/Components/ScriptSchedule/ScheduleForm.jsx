@@ -27,9 +27,12 @@ const ScheduleForm = ({ onJobScheduled }) => {
     const fetchScripts = async () => {
       try {
         const res = await getScripts(setLoadingScripts);
-        if (Array.isArray(res.data)) {
-          setScripts(res.data);
-        }
+        // if (Array.isArray(res.data)) {
+        //   setScripts(res.data);
+        // }
+        const Apidata = res.data
+        const listOFscript = Apidata.map(script => script.name)
+        setScripts(listOFscript);
       } catch (err) {
         console.error("Failed to load scripts", err);
       }

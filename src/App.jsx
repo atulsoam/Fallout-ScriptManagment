@@ -7,7 +7,7 @@ import FalloutDashboard from './Pages/FalloutDashboard';
 import ScriptHistory from './Pages/ScriptHistory';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ScriptUploader from './Pages/ScriptUploader';
+import ScriptManagerPage from './Pages/ScriptManagerPage';
 import ScriptRunner from './Pages/ScriptRunner';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -56,7 +56,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<FalloutDashboard />} />
             <Route path="/history" element={<ScriptHistory />} />
-            <Route path="/upload" element={<ScriptUploader />} />
+            <Route path="/upload" element={<ScriptManagerPage />} />
             <Route path="/scriptRunner" element={<ScriptRunner />} />
             <Route path="/SchedulerPage" element={<SchedulerPage />} />
 
