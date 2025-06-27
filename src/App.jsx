@@ -13,6 +13,10 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SchedulerPage from "./Pages/ScriptScheduler"
 import Dashboard from './Pages/Dashboard';
+import AdminDashboard from './Pages/AdminDashboard';
+import Logout from './Auth/Logout';
+import { checkIfAdmin } from './services/auth/authServices';
+
 
 function App() {
   const location = useLocation();
@@ -28,6 +32,34 @@ function App() {
       navigate('/login');
     }
   }, [location, navigate]);
+
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const authToken = localStorage.getItem('authToken');
+
+    if (!authToken) return;
+
+    const parsed = JSON.parse(authToken);
+    const cuid = parsed?.cuid;
+
+    const isAdminRoute = currentPath.startsWith('/admin');
+
+    if (isAdminRoute && cuid) {
+      checkIfAdmin(cuid)
+        .then((updatedUser) => {
+          if (!updatedUser.isAdmin) {
+            localStorage.setItem('authToken', JSON.stringify(updatedUser));
+            navigate("/")
+          } else {
+            localStorage.setItem('authToken', JSON.stringify(updatedUser));
+          }
+        })
+        .catch((err) => {
+          console.error('Admin validation failed', err);
+        });
+    }
+  }, [location.pathname, navigate]);
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -52,16 +84,16 @@ function App() {
             marginLeft: !isLoginPage ? (sidebarOpen ? '256px' : '64px') : 0,
           }}
         >
-          {/* ⛳️ Always render routes, even on login page */}
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            {/* <Route path="/" element={<FalloutDashboard />} /> */}
             <Route path="/" element={<Dashboard />} />
 
             <Route path="/history" element={<ScriptHistory />} />
             <Route path="/upload" element={<ScriptManagerPage />} />
             <Route path="/scriptRunner" element={<ScriptRunner />} />
             <Route path="/SchedulerPage" element={<SchedulerPage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/logout" element={<Logout />} />
 
           </Routes>
         </main>
