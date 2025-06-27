@@ -54,3 +54,12 @@ export const AddScripSubtType = async (setLoading,ScriptSubType) => {
     if (setLoading) setLoading(false);
   }
 };
+
+export const getApprovers = async (setLoading,) => {
+  if (setLoading) setLoading(true);
+  try {
+    return await axios.get(`${API_BASE}/approvers`);
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};

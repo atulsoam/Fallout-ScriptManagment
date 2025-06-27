@@ -4,10 +4,22 @@ import datetime
 from app import mongo
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
+from app.services.ScheduleService import schedule_script
+
 
 def update_admin_controls_list(field, cuid, action):
     update_query = {"$addToSet" if action == "add" else "$pull": {field: cuid}}
     mongo.db.AdminControlls.update_one({}, update_query, upsert=True)
+
+@script_routes.route('/approvers', methods=['GET'])
+def get_approvers():
+    document = mongo.db.AdminControlls.find_one()
+    
+    if document and 'approverList' in document:
+        return jsonify(document['approverList']), 200
+    else:
+        return jsonify({"error": "No approver list found"}), 404
+
 
 @script_routes.route('/admin/create-user', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
@@ -175,3 +187,95 @@ def is_user_admin(cuid):
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@script_routes.route('/admin/approve/<job_id>', methods=['PATCH'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def approveSchedule_script(job_id):
+    job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    mongo.db.ScheduledJobs.update_one(
+        {"_id": job_id},
+        {"$set": {"isApproved": True,"status":"Approved", "updatedAt": datetime.datetime.now()}}
+    )
+
+    if job.get("enabled", False):
+        try:
+            schedule_script(
+                script_name=job["scriptName"],
+                day=job["daysOfWeek"] if job["daysOfWeek"] != ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] else "*",
+                time_str=job["time"],
+                job_id=job["_id"],
+                cuid=job.get("Cuid"),
+                metadata=job.get("metadata"),
+                enabled=True
+            )
+        except Exception as e:
+            return jsonify({"error": f"Approved but scheduling failed: {e}"}), 500
+
+    return jsonify({"message": f"Job {job_id} approved and scheduled"}), 200
+
+
+@script_routes.route('/admin/reject/<job_id>', methods=['PATCH'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def rejectSchedule_script(job_id):
+    updates = request.get_json()
+    rejectReason = updates.get("rejectReason","Na")
+    job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    mongo.db.ScheduledJobs.update_one(
+        {"_id": job_id},
+        {"$set": {
+            "isApproved": False,
+            "status": "Rejected",
+            "rejectedReason":rejectReason,
+            "enabled": False,
+            "updatedAt": datetime.datetime.now()
+        }}
+    )
+
+    try:
+        from app import scheduler
+        scheduler.remove_job(job_id)
+    except Exception:
+        pass  # In case it wasn't scheduled yet
+
+    return jsonify({"message": f"Job {job_id} rejected and disabled"}), 200
+
+
+@script_routes.route('/admin/pending-approvals/all-scripts', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_pending_approvals_from_all_scripts():
+    try:
+        pending_scripts = list(mongo.db.AllScript.find(
+            {
+                "$and": [
+                    {"isApproved": False},
+                    {"status": "Pending"}
+                ]
+            },
+        ))
+        return jsonify({"pendingScripts": pending_scripts}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+@script_routes.route('/admin/pending-approvals/scheduled-scripts', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_pending_approvals_from_scheduled_scripts():
+    try:
+        pending_scheduled = list(mongo.db.ScheduledJobs.find(
+            {
+                "$and": [
+                    {"isApproved": False},
+                    {"status": "Pending"}
+                ]
+            },
+        ))
+        return jsonify({"pendingScheduled": pending_scheduled}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

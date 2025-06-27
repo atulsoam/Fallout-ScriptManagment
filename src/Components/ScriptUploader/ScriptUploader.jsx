@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaUpload, FaPlus } from "react-icons/fa";
 import AddTypeModal from "./AddTypeModal"; // import this
 import { API_BASE } from "../../utils/Config";
+
 const ScriptUploader = (
     {
         HandleOnSubmit,
@@ -15,11 +16,11 @@ const ScriptUploader = (
         scriptSubTypes,
         scriptTypes,
         handleAddType,
-        handleAddSubType
+        handleAddSubType,
+        approvers
     }) => {
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [showSubTypeModal, setShowSubTypeModal] = useState(false);
-
 
 
 
@@ -115,6 +116,25 @@ const ScriptUploader = (
 
                         <label className="absolute left-4 top-2 text-gray-500 text-sm peer-focus:text-blue-600">
                             Script Sub Type
+                        </label>
+                    </div>
+                    {/* Approvers Dropdown */}
+                    <div className="relative">
+                        <select
+                            name="approver"
+                            value={formData.approver || ""}
+                            onChange={handleFormChange}
+                            className="peer block w-full appearance-none border border-gray-300 bg-white px-4 pt-6 pb-2 rounded-md shadow-sm"
+                        >
+                            <option value="" disabled hidden></option>
+                            {approvers.map((approver) => (
+                                <option key={approver} value={approver}>
+                                    {approver}
+                                </option>
+                            ))}
+                        </select>
+                        <label className="absolute left-4 top-2 text-gray-500 text-sm peer-focus:text-blue-600">
+                            Select Approver
                         </label>
                     </div>
 

@@ -3,7 +3,7 @@ import datetime
 from functools import wraps
 from app import mongo, scheduler
 from app.services.script_executor import run_script as executeScript
-
+from bson import ObjectId
 def track_job_run(exec_func):
     @wraps(exec_func)
     def wrapper(script_name, job_id, *args, **kwargs):
@@ -17,7 +17,6 @@ def track_job_run(exec_func):
             result = None
         end = datetime.datetime.now()
         duration = (end - start).total_seconds()
-        print(job_id,"JobID")
         job_doc = mongo.db.ScheduledJobs.find_one({"_id": job_id})
         if job_doc:
             run_count = job_doc.get("runCount", 0) + 1
@@ -43,7 +42,7 @@ def track_job_run(exec_func):
             raise RuntimeError(f"Job {job_id} failed during execution")
     return wrapper
 
-def exec_func(script_name,job_id, exec_id,):
+def exec_func(script_name, job_id):
     script_doc = mongo.db.AllScript.find_one({"name": script_name})
     if not script_doc:
         print(f"Error: Script {script_name} not found in DB.")
@@ -53,9 +52,8 @@ def exec_func(script_name,job_id, exec_id,):
     if not script_code:
         print(f"Error: No code found for script {script_name}")
         return
+    exec_id = str(ObjectId())
 
-
-    # Insert running script status
     mongo.db.RunningScript.insert_one({
         "_id": exec_id,
         "script": script_name,
@@ -63,8 +61,8 @@ def exec_func(script_name,job_id, exec_id,):
         "statusField": "status",
         "collectionName": script_name,
         "scriptType": script_doc.get("scriptType", "NA"),
-        "ExecutedFrom":"Scheduler",
-        "user": "SystemScheduler",  # Or pass the Cuid if available
+        "ExecutedFrom": "Scheduler",
+        "user": "SystemScheduler",
         "startTime": datetime.datetime.now(),
         "scriptSubType": script_doc.get("scriptSubType", "NA"),
         "createdAt": str(datetime.datetime.now().date()),
@@ -75,25 +73,21 @@ def exec_func(script_name,job_id, exec_id,):
             "Total": 0
         }
     })
+    mongo.db.ScheduledJobs.update_one({"_id": job_id}, {"$addToSet": {"exec_id": exec_id}}, upsert=True)
+
 
     print(f"Starting script '{script_name}' with exec_id '{exec_id}'")
-
-    # Launch the script async runner
     executeScript(script_name, script_code, exec_id, mongo.db.RunningScript)
 
-  
 def schedule_script(
     script_name,
-    exec_id ,
-    day,            # e.g. "mon", "wed", "*" for everyday
-    time_str,       # e.g. "10:15"
+    day,
+    time_str,
     job_id=None,
     cuid=None,
     metadata=None,
     enabled=True,
-
 ):
-    # print(day,"day2")
     if not job_id:
         timestamp = int(datetime.datetime.now().timestamp())
         job_id = f"{script_name}_{timestamp}"
@@ -106,17 +100,22 @@ def schedule_script(
         raise ValueError(f"Invalid time_str format, expected HH:MM. Error: {e}")
 
     day_of_week = day if isinstance(day, str) else ",".join(day)
-
     cron_trigger = CronTrigger(day_of_week=day_of_week, hour=hour, minute=minute)
 
     # Wrap exec_func with tracking decorator
     tracked_func = track_job_run(exec_func)
-    if enabled:
+
+    # Determine approval status (default to False for new entries)
+    existing_job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    is_approved = existing_job.get("isApproved", False) if existing_job else False
+    statusSchedule = existing_job.get("status","Pending") if existing_job else "Pending"
+
+    if enabled and is_approved:
         scheduler.add_job(
             func=tracked_func,
             trigger=cron_trigger,
             id=job_id,
-            args=[script_name, job_id,exec_id],
+            args=[script_name, job_id],
             replace_existing=True
         )
 
@@ -135,54 +134,52 @@ def schedule_script(
         "time": time_str,
         "daysOfWeek": days,
         "enabled": enabled,
+        "isApproved": is_approved,
         "createdAt": datetime.datetime.now(),
         "updatedAt": datetime.datetime.now(),
         "runCount": 0,
         "metadata": metadata or {},
-        "exec_id": exec_id
+        "status":statusSchedule
     }
-
 
     mongo.db.ScheduledJobs.update_one({"_id": job_id}, {"$set": job_doc}, upsert=True)
 
     return job_id
 
 def DisableScript(job_id, enable):
-    print(job_id,enable)
+    print(job_id, enable)
     try:
         if not enable:
-            # Disable job in scheduler and DB
             scheduler.remove_job(job_id)
-            job_doc = {
-                "enabled": False,
-                "updatedAt": datetime.datetime.now(),
-            }
-            mongo.db.ScheduledJobs.update_one({"_id": job_id}, {"$set": job_doc}, upsert=True)
+            mongo.db.ScheduledJobs.update_one(
+                {"_id": job_id},
+                {"$set": {"enabled": False, "updatedAt": datetime.datetime.now()}},
+                upsert=True
+            )
         else:
-            # Re-enable job by rescheduling
             job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
             if not job:
                 print(f"No job found with job_id: {job_id}")
                 return False
 
-            # Extract data from DB to re-schedule the script
-            schedule_script(
-                script_name=job["scriptName"],
-                exec_id=job["exec_id"],
-                day=job["daysOfWeek"] if job["daysOfWeek"] != ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] else "*",
-                time_str=job["time"],
-                job_id=job["_id"],
-                cuid=job.get("Cuid"),
-                metadata=job.get("metadata"),
-                enabled=True
-            )
+            if job.get("isApproved", False):
+                schedule_script(
+                    script_name=job["scriptName"],
+                    day=job["daysOfWeek"] if job["daysOfWeek"] != ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] else "*",
+                    time_str=job["time"],
+                    job_id=job["_id"],
+                    cuid=job.get("Cuid"),
+                    metadata=job.get("metadata"),
+                    enabled=True
+                )
+            else:
+                return False
 
-            # Update the 'enabled' status in DB
-            mongo.db.ScheduledJobs.update_one(
-                {"_id": job_id},
-                {"$set": {"enabled": True, "updatedAt": datetime.datetime.now()}},
-                upsert=True
-            )
+            # mongo.db.ScheduledJobs.update_one(
+            #     {"_id": job_id},
+            #     {"$set": {"enabled": True, "updatedAt": datetime.datetime.now()}},
+            #     upsert=True
+            # )
 
         return True
 
@@ -190,28 +187,21 @@ def DisableScript(job_id, enable):
         print(f"Error DisableScript job {job_id}: {e}")
         return False
 
-
-
-
 def unschedule_script(job_id):
     try:
         scheduler.remove_job(job_id)
-        
         mongo.db.ScheduledJobs.delete_one({"_id": job_id})
         return True
     except Exception as e:
         print(f"Error unscheduling job {job_id}: {e}")
         return False
-    
-
 
 def load_existing_schedules():
-    jobs = mongo.db.ScheduledJobs.find({"enabled": True})
+    jobs = mongo.db.ScheduledJobs.find({"enabled": True, "isApproved": True})
     for job in jobs:
         try:
             schedule_script(
                 script_name=job["scriptName"],
-                exec_id=job["exec_id"],
                 day=job["daysOfWeek"] if job["daysOfWeek"] != ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] else "*",
                 time_str=job["time"],
                 job_id=job["_id"],

@@ -104,3 +104,59 @@ export const deleteUser = async (cuid, setLoading) => {
 };
 
 
+
+export const getPendingAllScripts = async (setLoading) => {
+  if (setLoading) setLoading(true);
+  try {
+    const cuid = getCuidFromStorage();
+    return await axios.get(`${API_BASE}/admin/pending-approvals/all-scripts`, {
+      headers: { 'X-Requested-By': cuid }
+    });
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+export const getPendingScheduledScripts = async (setLoading) => {
+  if (setLoading) setLoading(true);
+  try {
+    const cuid = getCuidFromStorage();
+    return await axios.get(`${API_BASE}/admin/pending-approvals/scheduled-scripts`, {
+      headers: { 'X-Requested-By': cuid }
+    });
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+
+export const approveScript = async (scriptId) => {
+  const cuid = getCuidFromStorage();
+  return await axios.post(`${API_BASE}/approve/${scriptId}`, { cuid }, {
+    headers: { 'X-Requested-By': cuid }
+  });
+};
+
+// Reject script (POST with cuid and reason in body)
+export const rejectScript = async (scriptId, reason) => {
+  const cuid = getCuidFromStorage();
+  return await axios.post(`${API_BASE}/reject/${scriptId}`, { cuid, reason }, {
+    headers: { 'X-Requested-By': cuid }
+  });
+};
+
+
+export const approveScheduledScript = async (jobId) => {
+  const cuid = getCuidFromStorage();
+  return await axios.patch(`${API_BASE}/admin/approve/${jobId}`, {}, {
+    headers: { 'X-Requested-By': cuid }
+  });
+};
+
+export const rejectScheduledScript = async (jobId,rejectReason) => {
+  const cuid = getCuidFromStorage();
+  return await axios.patch(`${API_BASE}/admin/reject/${jobId}`, {rejectReason}, {
+    headers: { 'X-Requested-By': cuid }
+  });
+};
+

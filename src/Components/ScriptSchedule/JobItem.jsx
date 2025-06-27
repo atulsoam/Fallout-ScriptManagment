@@ -64,8 +64,8 @@ const JobItem = ({ job, onDelete }) => {
                         </h3>
                         <span
                             className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${isEnabled
-                                    ? "text-green-700 bg-green-100"
-                                    : "text-gray-500 bg-gray-100"
+                                ? "text-green-700 bg-green-100"
+                                : "text-gray-500 bg-gray-100"
                                 }`}
                         >
                             {isEnabled ? "Enabled" : "Disabled"}
@@ -75,6 +75,34 @@ const JobItem = ({ job, onDelete }) => {
                         <FaUserCircle className="text-gray-400" />
                         <span>Scheduled by: {Cuid}</span>
                     </div>
+                    {/* Approval Status */}
+                    {/* Approval Status with Rejected Reason */}
+                    {job.status && (
+                        <div className="mt-2">
+                            <span
+                                className={`inline-block text-xs font-semibold px-2 py-1 rounded-full transition-all
+                ${job.status === "Approved"
+                                        ? "bg-green-100 text-green-700"
+                                        : job.status === "Pending"
+                                            ? "bg-yellow-100 text-yellow-700"
+                                            : job.status === "Rejected"
+                                                ? "bg-red-100 text-red-700"
+                                                : "bg-gray-100 text-gray-600"
+                                    }`}
+                            >
+                                {job.status}
+                            </span>
+
+                            {/* Show rejected reason if status is Rejected */}
+                            {job.status === "Rejected" && job.rejectedReason && (
+                                <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-md border border-red-200">
+                                    <strong>Reason:</strong> {job.rejectedReason}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+
                 </div>
 
                 {/* Schedule Info */}

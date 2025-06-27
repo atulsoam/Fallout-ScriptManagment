@@ -68,8 +68,8 @@ def approve_script(script_id):
     if not script:
         return jsonify({"error": "Script not found"}), 404
 
-    if script["approver"] != approver:
-        return jsonify({"error": "You are not authorized to approve this script"}), 403
+    # if script["approver"] != approver:
+    #     return jsonify({"error": "You are not authorized to approve this script"}), 403
 
     all_scripts_col.update_one(
         {"_id": script_id},
@@ -100,8 +100,8 @@ def reject_script(script_id):
     if not script:
         return jsonify({"error": "Script not found"}), 404
 
-    if script["approver"] != approver:
-        return jsonify({"error": "You are not authorized to reject this script"}), 403
+    # if script["approver"] != approver:
+    #     return jsonify({"error": "You are not authorized to reject this script"}), 403
 
     all_scripts_col.update_one(
         {"_id": script_id},

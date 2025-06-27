@@ -16,6 +16,7 @@ import Dashboard from './Pages/Dashboard';
 import AdminDashboard from './Pages/AdminDashboard';
 import Logout from './Auth/Logout';
 import { checkIfAdmin } from './services/auth/authServices';
+import PendingApprovals from './Pages/PendingApprovals';
 
 
 function App() {
@@ -93,6 +94,7 @@ function App() {
             <Route path="/scriptRunner" element={<ScriptRunner />} />
             <Route path="/SchedulerPage" element={<SchedulerPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/adminRequests" element={<PendingApprovals />} />
             <Route path="/logout" element={<Logout />} />
 
           </Routes>

@@ -5,7 +5,7 @@ import Modal from "./Modal";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { toast } from "react-toastify";
-const ViewCodeModal = ({ scriptName, code, onClose, language = "javascript" }) => {
+const ViewCodeModal = ({ scriptName, code, onClose, language = "python" }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {

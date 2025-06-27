@@ -5,9 +5,11 @@ import { getScripts } from "../services/ScriptRunner/ScriptRunnerServices";
 import { toast } from "react-toastify";
 import { AddScripSubtType, AddScriptType, DeleteScript, fetchScriptTypes, UpdateScript } from "../services/ScriptUploader/ScritpUplaoderServices";
 import LoadingOverlay from "../Components/LoadingOverlay";
-import { uploadScript } from "../services/ScriptUploader/ScritpUplaoderServices";
+import { uploadScript, getApprovers } from "../services/ScriptUploader/ScritpUplaoderServices";
 
 const ScriptManagerPage = () => {
+    const storedAuth = JSON.parse(localStorage.getItem("authToken") || "{}");
+    const approverCuid = storedAuth.cuid || ""
     const [scripts, setScripts] = useState([]);
     const [loading, setLoading] = useState(true);
     const notifySuccess = (msg) => toast.success(msg);
@@ -17,6 +19,7 @@ const ScriptManagerPage = () => {
     const [isUploaded, setIsUploaded] = useState(false);
     const [scriptTypes, setScriptTypes] = useState([])
     const [scriptSubTypes, setScriptSubTypes] = useState([])
+    const [allApprover, setAllApprover] = useState([])
 
     const setupScriptTypesSubTypes = () => {
         fetchScriptTypes(setLoading).then((res) => {
@@ -30,7 +33,17 @@ const ScriptManagerPage = () => {
         scriptType: "",
         scriptSubType: "",
         description: "",
+        approver: "", // add this
     });
+    const fetchApprover = () => {
+        getApprovers(setLoading)
+            .then((res) => {
+                setAllApprover(res.data);
+            })
+            .catch(() => notifyError("Failed to load approvers"))
+            .finally(() => setLoading(false));
+    }
+
 
     const handleFileSelect = (file) => {
         const isPython = file.name.endsWith(".py") || file.type === "text/x-python";
@@ -77,6 +90,7 @@ const ScriptManagerPage = () => {
     useEffect(() => {
         fetchScripts();
         setupScriptTypesSubTypes()
+        fetchApprover()
     }, []);
 
     // Update script metadata handler
@@ -137,6 +151,7 @@ const ScriptManagerPage = () => {
                 description: formData.description,
                 scriptType: formData.scriptType || "System",
                 scriptSubType: formData.scriptSubType || "System",
+                approver: approverCuid
             };
             uploadScript(setLoading, payload).then((res) => notifySuccess("Script Uploaded succesfully"))
                 .catch(() => notifyError("Script Upload Failed!")).finally(() => {
@@ -179,6 +194,7 @@ const ScriptManagerPage = () => {
                         scriptSubTypes={scriptSubTypes}
                         handleAddType={handleAddType}
                         handleAddSubType={handleAddSubType}
+                        approvers={allApprover}
                     />
                 </main>
                 {/* Left: Script List */}

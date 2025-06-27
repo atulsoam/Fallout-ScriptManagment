@@ -6,21 +6,26 @@ from bson import ObjectId
 from app.services.ScheduleService import schedule_script,load_existing_schedules,unschedule_script,DisableScript,exec_func
 def serialize_job(job):
     return {
-        "job_id": str(job["_id"]),
+        "job_id": str(job.get("_id")),
         "scriptName": job.get("scriptName"),
         "Cuid": job.get("Cuid"),
         "frequency": job.get("frequency"),
         "time": job.get("time"),
-        "daysOfWeek": job.get("daysOfWeek"),
-        "enabled": job.get("enabled"),
+        "daysOfWeek": job.get("daysOfWeek", []),
+        "enabled": job.get("enabled", False),
+        "status": job.get("status", False),
+        "isApproved": job.get("isApproved", False),
+        "runCount": job.get("runCount", 0),
+        "lastDuration": job.get("lastDuration", 0.0),
         "lastRun": job.get("lastRun").isoformat() if job.get("lastRun") else None,
         "nextRun": job.get("nextRun").isoformat() if job.get("nextRun") else None,
-        "lastDuration": job.get("lastDuration"),
-        "runCount": job.get("runCount"),
-        "metadata": job.get("metadata", {}),
         "createdAt": job.get("createdAt").isoformat() if job.get("createdAt") else None,
         "updatedAt": job.get("updatedAt").isoformat() if job.get("updatedAt") else None,
+        "metadata": job.get("metadata", {}),
+        "exec_id": job.get("exec_id"),
+        "rejectedReason":job.get("rejectedReason","")
     }
+
 
 # Schedule a new script
 @script_routes.route('/schedule', methods=['POST'])
@@ -39,7 +44,6 @@ def schedule():
     if not all([script_name, day, time_str, cuid]):
         return jsonify({"error": "Missing required fields: scriptName, day, time, Cuid"}), 400
 
-    exec_id = str(ObjectId())
     
 
     try:
@@ -51,7 +55,6 @@ def schedule():
             cuid=cuid,
             metadata=metadata,
             enabled=enabled,
-            exec_id= exec_id
 
         )
     except Exception as e:
