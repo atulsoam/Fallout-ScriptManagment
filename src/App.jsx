@@ -12,6 +12,7 @@ import ScriptRunner from './Pages/ScriptRunner';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SchedulerPage from "./Pages/ScriptScheduler"
+import Dashboard from './Pages/Dashboard';
 
 function App() {
   const location = useLocation();
@@ -54,7 +55,9 @@ function App() {
           {/* ⛳️ Always render routes, even on login page */}
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<FalloutDashboard />} />
+            {/* <Route path="/" element={<FalloutDashboard />} /> */}
+            <Route path="/" element={<Dashboard />} />
+
             <Route path="/history" element={<ScriptHistory />} />
             <Route path="/upload" element={<ScriptManagerPage />} />
             <Route path="/scriptRunner" element={<ScriptRunner />} />

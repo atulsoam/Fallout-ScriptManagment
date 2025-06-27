@@ -29,6 +29,7 @@ def schedule():
 
     script_name = data.get("scriptName")
     day = data.get("day")  # e.g., "mon", "wed", or "*"
+    # print(day,"day1")
     time_str = data.get("time")  # e.g., "10:15"
     cuid = data.get("Cuid")
     metadata = data.get("metadata", {})

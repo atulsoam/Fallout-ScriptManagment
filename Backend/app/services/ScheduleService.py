@@ -93,6 +93,7 @@ def schedule_script(
     enabled=True,
 
 ):
+    # print(day,"day2")
     if not job_id:
         timestamp = int(datetime.datetime.now().timestamp())
         job_id = f"{script_name}_{timestamp}"
@@ -119,20 +120,28 @@ def schedule_script(
             replace_existing=True
         )
 
+    if day == "*":
+        days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    elif isinstance(day, list):
+        days = day
+    else:
+        days = [day]
+
     job_doc = {
         "_id": job_id,
         "scriptName": script_name,
         "Cuid": cuid,
         "frequency": "weekly" if day != "*" else "daily",
         "time": time_str,
-        "daysOfWeek": [day] if day != "*" else ["mon","tue","wed","thu","fri","sat","sun"],
+        "daysOfWeek": days,
         "enabled": enabled,
         "createdAt": datetime.datetime.now(),
         "updatedAt": datetime.datetime.now(),
         "runCount": 0,
         "metadata": metadata or {},
-        "exec_id":exec_id
+        "exec_id": exec_id
     }
+
 
     mongo.db.ScheduledJobs.update_one({"_id": job_id}, {"$set": job_doc}, upsert=True)
 

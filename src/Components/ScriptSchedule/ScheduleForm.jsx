@@ -43,10 +43,14 @@ const ScheduleForm = ({ onJobScheduled }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    console.log(name,value);
+    
     if (name === "enabled") {
       setFormData((prev) => ({ ...prev, enabled: checked }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
+      console.log(formData);
+      
     }
   };
 

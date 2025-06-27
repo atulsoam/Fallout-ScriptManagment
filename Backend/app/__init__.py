@@ -19,7 +19,7 @@ def create_app():
     socketio.init_app(app)
     scheduler.start()  # Start scheduler once app is initialized
 
-    from app.routes import script_routes, auth, ScriptUploader, script_exec,ScriptScheduler
+    from app.routes import script_routes, auth, ScriptUploader, script_exec,ScriptScheduler,ScriptDashBoard
     app.register_blueprint(script_routes)
 
     return app

@@ -1,18 +1,18 @@
 import React from 'react';
 import {
   FaBars, FaHome, FaSignOutAlt, FaChartBar, FaHistory,
-  FaUpload, FaPlay, FaTimes
+  FaUpload, FaPlay, FaClock
 } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
 import colors from '../utils/Colors';
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: FaHome },
+  { to: '/', label: 'Dashboard', icon: FaHome },
   { to: '/history', label: 'History', icon: FaHistory },
   { to: '/upload', label: 'Upload', icon: FaUpload },
   { to: '/scriptRunner', label: 'Run Script', icon: FaPlay },
-  { to: '/SchedulerPage', label: 'Scheduler', icon: FaTimes },
-  { to: '/', label: 'Fallout Dashboard', icon: FaChartBar },
+  { to: '/SchedulerPage', label: 'Scheduler', icon: FaClock },
+  // { to: '/', label: 'Fallout Dashboard', icon: FaChartBar },
   { to: '/logout', label: 'Logout', icon: FaSignOutAlt },
 ];
 
