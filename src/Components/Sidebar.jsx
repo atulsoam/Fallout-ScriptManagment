@@ -6,6 +6,7 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom';
 import colors from '../utils/Colors';
 import { logout } from '../services/auth/authServices';
+import logo from "../assets/lumen-logo.png";
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: FaHome },
@@ -46,9 +47,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: colors.border }}>
         {isOpen && (
-          <span className="text-xl font-semibold text-gray-800" style={{ color: colors.primary }}>
-            Lumen
-          </span>
+          // <span className="text-xl font-semibold text-gray-800" style={{ color: colors.primary }}>
+          //   Lumen
+          // </span>
+          <img
+            src={logo}
+            alt="Lumen Logo"
+            className="h-8 w-auto object-contain" // Bigger & better scaled
+          />
         )}
         <button
           onClick={toggleSidebar}

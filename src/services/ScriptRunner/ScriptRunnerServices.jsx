@@ -10,6 +10,15 @@ export const getScripts = async (setLoading) => {
   }
 };
 
+export const getAllScripts = async (setLoading) => {
+  if (setLoading) setLoading(true);
+  try {
+    return await axios.get(`${API_BASE}/AllScripts`);
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
 export const getRunningScripts = async (setLoading) => {
   if (setLoading) setLoading(true);
   try {

@@ -131,7 +131,12 @@ def get_scripts():
             "description": 1,
             "scriptType": 1,
             "scriptSubType": 1,
-            "code": 1
+            "code": 1,
+            "approver":1,
+            "isApproved":1,
+            "isEnabled":1,
+            "status":1,
+            "rejectionReason":1
         }
     )
 
@@ -145,7 +150,58 @@ def get_scripts():
             "description": script.get("description", ""),
             "scriptType": script.get("scriptType", "System"),
             "scriptSubType": script.get("scriptSubType", "System"),
-            "code": script.get("code", "Not found")
+            "code": script.get("code", "Not found"),
+            "approver":script.get("approver","NA"),
+            "isApproved":script.get("isApproved",False),
+            "isEnabled":script.get("isEnabled",False),
+            "rejectionReason":script.get("rejectionReason","NA"),
+            "status":script.get("status","Pending")
+
+        })
+
+    return jsonify(output), 200
+
+
+
+@script_routes.route("/AllScripts", methods=["GET"])
+def get_Allscripts():
+    scripts = mongo.db.AllScript.find(
+        {},
+        {
+            "_id": 1,
+            "name": 1,
+            "uploadedBy": 1,
+            "uploadedAt": 1,
+            "description": 1,
+            "scriptType": 1,
+            "scriptSubType": 1,
+            "code": 1,
+            "approver":1,
+            "isApproved":1,
+            "isEnabled":1,
+            "status":1,
+            "rejectionReason":1
+        
+        }
+    )
+
+    output = []
+    for script in scripts:
+        output.append({
+            "id": str(script["_id"]),
+            "name": script["name"],
+            "uploadedBy": script.get("uploadedBy", "Unknown"),
+            "uploadedAt": script.get("uploadedAt", ""),
+            "description": script.get("description", ""),
+            "scriptType": script.get("scriptType", "System"),
+            "scriptSubType": script.get("scriptSubType", "System"),
+            "code": script.get("code", "Not found"),
+            "approver":script.get("approver","NA"),
+            "isApproved":script.get("isApproved",False),
+            "isEnabled":script.get("isEnabled",False),
+            "rejectionReason":script.get("rejectionReason","NA"),
+            "status":script.get("status","Pending")
+
         })
 
     return jsonify(output), 200

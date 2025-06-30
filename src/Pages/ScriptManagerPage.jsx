@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ScriptUploader from "../Components/ScriptUploader/ScriptUploader";
 import ScriptList from "../Components/ScriptUploader/ScriptList";
-import { getScripts } from "../services/ScriptRunner/ScriptRunnerServices";
+import { getAllScripts } from "../services/ScriptRunner/ScriptRunnerServices";
 import { toast } from "react-toastify";
 import { AddScripSubtType, AddScriptType, DeleteScript, fetchScriptTypes, UpdateScript } from "../services/ScriptUploader/ScritpUplaoderServices";
 import LoadingOverlay from "../Components/LoadingOverlay";
@@ -78,7 +78,7 @@ const ScriptManagerPage = () => {
     };
     // Fetch scripts function
     const fetchScripts = async () => {
-        getScripts(setLoading)
+        getAllScripts(setLoading)
             .then((res) => {
                 setScripts(res.data);
             })
