@@ -41,7 +41,11 @@ def login():
 
     session['user'] = {
         'cuid': user['cuid'],
-        'isAdmin': user.get('isAdmin', False)
+        'isAdmin': user.get('isAdmin', False),
+        "username":user.get("username",""),
+        "email":user.get("email",""),
+        "isApprover":user.get("isApprover",False)
+
     }
 
     return jsonify({
