@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio,Session
+from app import mongo,socketio
 from app.services.script_executor import run_script as executeScript,stop_script,get_running_scripts
 import datetime
 from app.routes import script_routes

@@ -6,6 +6,8 @@ import ResultSummaryPie from "../Components/MainDashboard/ResultSummaryPie";
 import TopExecutedBar from "../Components/MainDashboard/TopExecutedBar";
 import ScriptHealthTable from "../Components/MainDashboard/ScriptHealthTable";
 import ScheduledJobsByScriptCard from "../Components/MainDashboard/ScheduledJobsByScriptCard";
+import ScheduledJobPriorityChart from "../Components/MainDashboard/ScheduledJobPriorityChart";
+import RejectionReasonsCard from "../Components/MainDashboard/RejectionReasonsCard";
 
 import { FaTasks, FaCalendarAlt, FaPlayCircle } from "react-icons/fa";
 import { DashboardData } from "../services/Dashboard/MainDashboardServices";
@@ -131,6 +133,9 @@ const Dashboard = () => {
           <PieChartCard title="Execution Origin" data={stats.ExecutedFrom} />
         </div>
       </section>
+
+
+
 
 
     </div>

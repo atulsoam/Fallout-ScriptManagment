@@ -21,16 +21,9 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
+  const [isAdmin, setisAdmin] = useState(false)
+  const [isApprover, setisApprover] = useState(false)
   const isLoginPage = location.pathname === '/login';
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (!token && !isLoginPage) {
-      navigate('/login');
-    }
-  }, [location, navigate]);
-
   useEffect(() => {
     const currentPath = location.pathname;
     const authToken = localStorage.getItem('authToken');
@@ -45,15 +38,23 @@ function App() {
     if (isAdminRoute && cuid) {
       checkIfAdmin(cuid)
         .then((updatedUser) => {
-          if (!updatedUser.isAdmin) {
-            localStorage.setItem('authToken', JSON.stringify(updatedUser));
-            navigate("/");
-          } else {
-            localStorage.setItem('authToken', JSON.stringify(updatedUser));
+          const isAdminUser = updatedUser?.isAdmin;
+          const isApproverUser = updatedUser?.isApprover;
+
+          setisAdmin(isAdminUser);
+          setisApprover(isApproverUser);
+
+          // Save updated user roles
+          localStorage.setItem('authToken', JSON.stringify(updatedUser));
+
+          // Redirect unauthorized users trying to access /admin routes
+          if (!isAdminUser && !isApproverUser) {
+            navigate('/');
           }
         })
         .catch((err) => {
-          console.error('Admin validation failed', err);
+          console.error('Admin/Approver validation failed', err);
+          // navigate('/'); // fallback redirect
         });
     }
   }, [location.pathname, navigate]);
@@ -73,6 +74,8 @@ function App() {
         {!isLoginPage && (
           <Sidebar
             isOpen={sidebarOpen}
+            // isAdmin={isAdmin}
+            // isApprover={isApprover}
             toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
         )}

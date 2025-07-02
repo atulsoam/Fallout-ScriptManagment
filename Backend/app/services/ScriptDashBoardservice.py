@@ -13,7 +13,7 @@ category_sub_category = mongo.db.categorySubCategory
 def get_dashboard_counts(days=10, top_n=5):
     all_scripts = list(all_script.find({}))
     running_scripts = list(running_script.find({}))
-    scheduled_jobs = list(scheduled_job.find({}))
+    scheduled_jobs = list(scheduled_job.find({"isApproved":True,"enabled":True}))
 
     now = datetime.datetime.now()
     start_date = now - timedelta(days=days)
@@ -90,6 +90,9 @@ def get_dashboard_counts(days=10, top_n=5):
     summary["TopExecutedScripts"] = get_most_executed_scripts(running_scripts, top_n=top_n)
     summary["ScriptHealthSummary"] = get_script_health_summary(running_scripts, start_date)
     summary["ScheduledJobsByScript"] = get_scheduled_jobs_summary(scheduled_jobs)
+    summary["ScriptMetadataSummary"] = get_script_metadata_summary(all_scripts)
+    summary["ScheduledJobInsights"] = get_scheduled_job_insights(scheduled_jobs)
+
 
     return summary
 
@@ -224,3 +227,43 @@ def get_scheduled_jobs_summary(scheduled_jobs):
         del data["nextRunTimes"]
 
     return dict(job_summary)
+
+def get_script_metadata_summary(all_scripts):
+    by_approval = Counter(s["isApproved"] for s in all_scripts)
+    by_enable = Counter(s["isEnabled"] for s in all_scripts)
+    by_uploader = Counter(s["uploadedBy"] for s in all_scripts)
+    by_approver = Counter(s["approver"] for s in all_scripts if s.get("approver"))
+    by_tag = Counter(tag for s in all_scripts for tag in s.get("tags", []))
+    return {
+        "ByApproval": dict(by_approval),
+        "ByEnable": dict(by_enable),
+        "ByUploader": dict(by_uploader.most_common(5)),
+        "ByApprover": dict(by_approver.most_common(5)),
+        "ByTag": dict(by_tag)
+    }
+
+def get_scheduled_job_insights(scheduled_jobs):
+    total = len(scheduled_jobs)
+    rejected = [j for j in scheduled_jobs if j.get("status") == "Rejected"]
+    freq_reject = Counter(j.get("rejectedReason", "").split("\n")[0] for j in rejected)
+    priority_counts = Counter(j.get("metadata", {}).get("priority", "unknown") for j in scheduled_jobs)
+    run_counts_by_priority = defaultdict(list)
+    next_run_by_priority = defaultdict(list)
+    for j in scheduled_jobs:
+        p = j.get("metadata", {}).get("priority", "unknown")
+        rc = j.get("runCount", {}).get("$numberInt") if isinstance(j.get("runCount"), dict) else j.get("runCount", 0)
+        run_counts_by_priority[p].append(int(rc or 0))
+        if j.get("nextRun"):
+            dt = j["nextRun"]["$date"]["$numberLong"] if isinstance(j["nextRun"], dict) else None
+            if dt:
+                next_run_by_priority[p].append(datetime.datetime.fromtimestamp(int(dt)/1000.0))
+    avg_run = {p: sum(rcs)/len(rcs) for p, rcs in run_counts_by_priority.items()}
+    next_min = {p: min(times).strftime("%Y-%m-%d %H:%M") for p, times in next_run_by_priority.items() if times}
+    return {
+        "TotalJobs": total,
+        "RejectedJobs": len(rejected),
+        "CommonRejectionReasons": dict(freq_reject.most_common(3)),
+        "PriorityCounts": dict(priority_counts),
+        "AvgRunCountByPriority": avg_run,
+        "NextRunByPriority": next_min
+    }

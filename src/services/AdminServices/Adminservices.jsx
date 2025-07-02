@@ -153,10 +153,21 @@ export const approveScheduledScript = async (jobId) => {
   });
 };
 
-export const rejectScheduledScript = async (jobId,rejectReason) => {
+export const rejectScheduledScript = async (jobId, rejectReason) => {
   const cuid = getCuidFromStorage();
-  return await axios.patch(`${API_BASE}/admin/reject/${jobId}`, {rejectReason}, {
+  return await axios.patch(`${API_BASE}/admin/reject/${jobId}`, { rejectReason }, {
     headers: { 'X-Requested-By': cuid }
   });
+};
+export const getAllPendingRequest = async (setLoading) => {
+  if (setLoading) setLoading(true);
+  try {
+    const cuid = getCuidFromStorage();
+    return await axios.get(`${API_BASE}/admin/pending-approvals`, {
+      headers: { 'X-Requested-By': cuid }
+    });
+  } finally {
+    if (setLoading) setLoading(false);
+  }
 };
 

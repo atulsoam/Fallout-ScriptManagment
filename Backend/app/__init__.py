@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_pymongo import PyMongo
-from flask_session import Session
+# from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from apscheduler.schedulers.background import BackgroundScheduler # type: ignore
@@ -14,7 +14,7 @@ def create_app():
     app.config.from_object('config.Config')
 
     CORS(app, supports_credentials=True)
-    Session(app)
+    # Session(app)
     mongo.init_app(app)
     socketio.init_app(app)
     scheduler.start()  # Start scheduler once app is initialized

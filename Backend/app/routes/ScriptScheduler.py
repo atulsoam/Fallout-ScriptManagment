@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio,Session
+from app import mongo,socketio
 import datetime
 from app.routes import script_routes
 from bson import ObjectId
 from app.services.ScheduleService import schedule_script,load_existing_schedules,unschedule_script,DisableScript,exec_func
+
+
 def serialize_job(job):
     return {
         "job_id": str(job.get("_id")),

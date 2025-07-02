@@ -279,3 +279,29 @@ def get_pending_approvals_from_scheduled_scripts():
         return jsonify({"pendingScheduled": pending_scheduled}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@script_routes.route('/admin/pending-approvals', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_pending_approvals_for_all():
+    try:
+        # Get count of unapproved, pending ScheduledJobs
+        scheduled_count = mongo.db.ScheduledJobs.count_documents({
+            "isApproved": False,
+            "status": "Pending"
+        })
+
+        # Get count of unapproved, pending AllScript items
+        script_count = mongo.db.AllScript.count_documents({
+            "isApproved": False,
+            "status": "Pending"
+        })
+
+        return jsonify({
+            "scheduledCount": scheduled_count,
+            "scriptCount": script_count,
+            "totalPending": scheduled_count + script_count
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
