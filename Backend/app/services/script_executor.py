@@ -6,7 +6,8 @@ from app import mongo,socketio
 # In-memory tracking
 running_processes = {}
 def update_running_script_status(docid, script_name, status,executions_collection, error_message=None):
-        collection = mongo.db[script_name]
+        StatusDb = mongo.cx['PROD_BM_ANALYTICS']
+        collection = StatusDb[script_name]
         all_statuses = collection.distinct("status")
         status_list = {}
 

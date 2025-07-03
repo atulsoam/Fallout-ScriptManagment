@@ -1,0 +1,69 @@
+Fallout & Script Management Tool
+Executive Summary & Technical Overview
+
+1. Purpose & Value Proposition
+The Fallout & Script Management Tool is a secure, web-based platform designed to automate, track, and manage operational scripts and fallout requests. It streamlines workflows for users, approvers, and administrators, ensuring compliance, efficiency, and transparency in script execution and fallout handling.
+
+2. Key Features
+- Dashboard & Analytics: Visualizes key metrics—total scripts, scheduled jobs, execution trends, script health, and top scripts.
+- Script Management: Upload, edit, approve, execute, and track scripts with full audit trails.
+- Scheduler: Automate script execution by day/time/frequency, manage job status and priorities.
+- Fallout Management: Specialized dashboard for fallout requests, with bulk actions, filtering, and detailed views.
+- Admin & User Management: Role-based access, user/role management, and real-time pending approvals.
+- Security & Compliance: Authentication, audit logs, and data protection.
+
+3. Technical Architecture
+- Frontend: React + Vite, modular components, responsive UI, React Router.
+- Backend: Flask + MongoDB, RESTful APIs, APScheduler, Socket.IO for real-time updates.
+- Services: Axios-based API services, email notifications, robust error handling.
+
+4. User Roles & Workflow
+| Role      | Capabilities                                                                 |
+|-----------|------------------------------------------------------------------------------|
+| User      | Upload scripts, schedule jobs, view own history, submit fallout requests      |
+| Approver  | Review/approve/reject scripts and jobs, see pending requests                 |
+| Admin     | All above, plus manage users/roles, view all data, configure system          |
+
+Typical Workflow:
+1. User uploads a script or fallout request.
+2. Approver/Admin reviews and approves/rejects.
+3. Approved scripts can be scheduled/executed.
+4. All actions are logged and visible in dashboards/history.
+
+5. Security, Compliance & Audit
+- Role Validation: All sensitive endpoints require role checks.
+- Session Management: Secure login/logout, session expiry.
+- Audit Logs: Every action (upload, approval, execution, rejection) is recorded.
+- Data Export: Script history and fallout data can be exported for compliance.
+
+6. Scalability & Maintainability
+- Modular Design: Easy to add new features or roles.
+- Extensible Backend: New APIs/routes can be added for future needs.
+- Modern Frontend: React/Vite stack ensures fast, maintainable UI.
+
+7. Visual Overview
+
+System Architecture Diagram:
+
+[Insert a diagram here showing:]
+- Web Browser (React Frontend) communicates via REST API and WebSocket with Backend (Flask, Python)
+- Backend connects to MongoDB Database
+- Backend sends email notifications
+
+Approval Workflow Diagram:
+
+[Insert a diagram here showing:]
+1. User submits script/fallout request to System
+2. System notifies Approver/Admin (pending approval)
+3. Approver/Admin reviews and approves/rejects
+4. System notifies User of decision
+
+[Insert Screenshot: Dashboard]
+[Insert Screenshot: Script Upload]
+[Insert Screenshot: Scheduler]
+[Insert Screenshot: Admin Panel]
+
+8. Conclusion
+The Fallout & Script Management Tool provides a robust, secure, and user-friendly platform for managing operational scripts and fallout requests. Its role-based workflows, real-time dashboards, and comprehensive audit trails make it ideal for organizations seeking efficiency, compliance, and transparency.
+
+[Add actual diagrams and screenshots in the marked sections above.]
