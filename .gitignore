@@ -25,4 +25,6 @@ dist-ssr
 venv
 flask_session
 __pycache__
+*__pycache__
+*.pyc
 config.py
