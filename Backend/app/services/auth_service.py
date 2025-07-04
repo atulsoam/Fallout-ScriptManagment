@@ -32,10 +32,10 @@ def require_roles_from_admin_controls(allowed_roles=["admin", "approver"]):
 
 
             # DEBUG prints moved here
-            print(f"Request headers: {request.headers}")
-            print(f"Request args: {request.args}")
-            print(f"Request json: {request.get_json(silent=True)}")
-            print(f"Detected cuid: {cuid}")
+            # print(f"Request headers: {request.headers}")
+            # print(f"Request args: {request.args}")
+            # print(f"Request json: {request.get_json(silent=True)}")
+            # print(f"Detected cuid: {cuid}")
 
             if not cuid:
                 return jsonify({"error": "CUID is required"}), 400

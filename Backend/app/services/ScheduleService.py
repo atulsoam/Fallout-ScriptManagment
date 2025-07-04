@@ -4,6 +4,7 @@ from functools import wraps
 from app import mongo, scheduler
 from app.services.script_executor import run_script as executeScript
 from bson import ObjectId
+
 def track_job_run(exec_func):
     @wraps(exec_func)
     def wrapper(script_name, job_id, *args, **kwargs):
