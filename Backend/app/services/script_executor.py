@@ -46,7 +46,7 @@ def update_running_script_status(docid, script_name, status,executions_collectio
 def run_script(script_name, script_code, exec_id, executions_collection):
 
     def execute():
-        start_time = datetime.datetime.now()  # ⏱️ Capture start time
+        start_time = datetime.datetime.now()  
 
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.py', mode='w') as temp_file:
@@ -75,7 +75,8 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                     clean_line = line.strip()
                     line_obj = {
                         "text": clean_line,
-                        "timestamp": str(datetime.datetime.now())
+                        "timestamp": str(datetime.datetime.now()),
+                        "stream_name":stream_name
                     }
 
                     # print(f"Emitting log to socket: {line_obj}")
@@ -92,7 +93,8 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                         mongo.db.ScriptLogs.insert_one({
                             "exec_id": exec_id,
                             "script_name": script_name,
-                            "lines": buffer.copy()
+                            "lines": buffer.copy(),
+                            "stream_name":stream_name
                         })
                         buffer.clear()
 
@@ -100,7 +102,8 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                     mongo.db.ScriptLogs.insert_one({
                         "exec_id": exec_id,
                         "script_name": script_name,
-                        "lines": buffer
+                        "lines": buffer,
+                        "stream_name":stream_name
                     })
 
                 stream.close()
@@ -132,7 +135,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                     "exec_id": exec_id,
                     "script_name": script_name,
                     "line": line,
-                    "timestamp": datetime.datetime.now()
+                    "timestamp": datetime.datetime.now(),
                 })
             update_running_script_status(exec_id, script_name, "Terminated",executions_collection, str(e))
 
