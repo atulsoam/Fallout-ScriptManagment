@@ -1,49 +1,76 @@
-from flask import request, jsonify,send_file
+from flask import request, jsonify,send_file,session
 from app.routes import script_routes
 from app import mongo
 from app.services.script_service import getcollectionDetails
-from datetime import datetime
+from datetime import datetime,timedelta
 import json
 import pandas as pd
 import io
+import traceback
 
 @script_routes.route("/getscriptHistory", methods=["GET"])
 def script_history():
     try:
-        # Pagination
-        page = int(request.args.get("page", 0))
-        pageSize = int(request.args.get("pageSize", 50))
-        filters = json.loads(request.args.get("filters", "{}"))
+        # --- Pagination & Filters ---
+        # print(session["user"])
+        cuid = (
+                    request.headers.get("X-CUID")
+                    or request.headers.get("X-Approver")
+                    or request.headers.get("X-Requested-By")
+                )
+        try:
+            page = int(request.args.get("page", 0))
+            pageSize = int(request.args.get("pageSize", 50))
+        except ValueError:
+            return jsonify(error="Invalid pagination parameters"), 400
 
-        # Build query
+        try:
+            filters = json.loads(request.args.get("filters", "{}"))
+        except json.JSONDecodeError:
+            return jsonify(error="Invalid filters format"), 400
+
+        sort_field = request.args.get("sortField", "startTime")
+        sort_order = int(request.args.get("sortOrder", -1))  # -1 for DESC, 1 for ASC
+            
         query = {}
+    
+        print("cuid came",cuid)
+        if cuid:
+            query["user"] = cuid
 
+        # --- Filter by Status ---
         status = filters.get("status")
         if status and status.lower() != "all":
             query["status"] = status.capitalize()
 
+        # --- Filter by Script Type ---
         script_type = filters.get("scriptType")
         if script_type and script_type.lower() != "all":
             query["scriptType"] = script_type
 
+        # --- Search Term ---
         search_term = filters.get("searchTerm")
         if search_term:
             query["script"] = {"$regex": search_term, "$options": "i"}
 
+        # --- Date Filtering ---
         from_date = filters.get("fromDate")
         to_date = filters.get("toDate")
         if from_date and to_date:
-            from_dt = datetime.strptime(from_date, "%Y-%m-%d")
-            to_dt = datetime.strptime(to_date, "%Y-%m-%d")
-            query["startTime"] = {"$gte": from_dt, "$lte": to_dt}
+            try:
+                from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+                to_dt = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)  # Inclusive
+                query["startTime"] = {"$gte": from_dt, "$lte": to_dt}
+            except ValueError:
+                return jsonify(error="Invalid date format. Use YYYY-MM-DD"), 400
 
-        # Total count
+        # --- Count Total Results ---
         total_count = mongo.db.RunningScript.count_documents(query)
 
-        # Pagination query
+        # --- Data Retrieval with Sorting ---
         cursor = (
             mongo.db.RunningScript.find(query)
-            .sort("startTime", -1)
+            .sort(sort_field, sort_order)
             .skip(page * pageSize)
             .limit(pageSize)
         )
@@ -51,46 +78,57 @@ def script_history():
         result = []
         for doc in cursor:
             fixed = not_fixed = total = processed = 0
-            if doc["status"] == "Running":
-                fixed, not_fixed, total, processed = getcollectionDetails(
-                    doc["collectionName"], doc["_id"]
-                )
-            else:
-                fixed = doc["statusList"].get("Fixed", 0)
-                not_fixed = doc["statusList"].get("Not Fixed", 0)
-                total = doc["statusList"].get("Total", 0)
-                processed = doc["statusList"].get("processedAccounts", 0)
+            try:
+                if doc.get("status") == "Running":
+                    fixed, not_fixed, total, processed = getcollectionDetails(
+                        doc.get("collectionName", ""), doc["_id"]
+                    )
+                else:
+                    status_list = doc.get("statusList", {})
+                    fixed = status_list.get("Fixed", 0)
+                    not_fixed = status_list.get("Not Fixed", 0)
+                    total = status_list.get("Total", 0)
+                    processed = status_list.get("processedAccounts", 0)
+            except Exception:
+                # In case getcollectionDetails or field access fails
+                pass
 
-            item = {
-                "id": str(doc["_id"]),
+            result.append({
+                "id": str(doc.get("_id")),
                 "name": doc.get("script", ""),
                 "status": doc.get("status", ""),
                 "type": doc.get("scriptType", ""),
+                "subType": doc.get("scriptSubType", ""),
+                "user": doc.get("user", ""),
+                "executedFrom": doc.get("ExecutedFrom", ""),
                 "startTime": doc.get("startTime").strftime("%Y-%m-%d %H:%M:%S") if doc.get("startTime") else "",
                 "endTime": doc.get("endTime").strftime("%Y-%m-%d %H:%M:%S") if doc.get("endTime") else "",
                 "fixed": fixed,
                 "notFixed": not_fixed,
                 "total": total,
-                "processed": processed
+                "processed": processed,
+                "duration": float(doc.get("Duration", 0)),
+            })
+
+        # --- Fetch Distinct Values for Filters ---
+        script_types = [v for v in mongo.db.RunningScript.distinct("scriptType") if v]
+        statuses = [v for v in mongo.db.RunningScript.distinct("status") if v]
+
+        return jsonify({
+            "data": result,
+            "totalCount": total_count,
+            "scriptTypes": script_types,
+            "statuses": statuses,
+            "pagination": {
+                "page": page,
+                "pageSize": pageSize
             }
-
-            result.append(item)
-
-        # NEW: Fetch distinct scriptType and status values
-        distinct_script_types = mongo.db.RunningScript.distinct("scriptType")
-        distinct_statuses = mongo.db.RunningScript.distinct("status")
-
-        return jsonify(
-            data=result,
-            totalCount=total_count,
-            scriptTypes=[v for v in distinct_script_types if v],  # clean None
-            statuses=[v for v in distinct_statuses if v]
-        )
+        })
 
     except Exception as e:
-        print(f"Exception in /getscriptHistory --> {str(e)}")
-        return jsonify(error=str(e)), 500
-
+        print("Exception in /getscriptHistory -->", str(e))
+        traceback.print_exc()
+        return jsonify(error="Internal server error", details=str(e)), 500
 
 
 @script_routes.route("/exportScriptData", methods=["POST"])
@@ -153,8 +191,9 @@ def get_script_data_by_type():
         if not collection_name or not script_id or not filter_type:
             return jsonify({"error": "Missing required parameters"}), 400
 
-        collection = mongo.db[collection_name]
-
+        # collection = mongo.db[collection_name]
+        StatusDb = mongo.cx['PROD_BM_ANALYTICS']
+        collection = StatusDb[collection_name]  # Use the custom database
         query = {"ScriptidentificationId": script_id}
         if filter_type != "All":
             query["status"] = filter_type
@@ -166,3 +205,47 @@ def get_script_data_by_type():
     except Exception as e:
         print(f"Error in /getScriptDataByType: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+
+
+@script_routes.route('/downloadScriptLogs', methods=['POST'])
+def download_script_logs():
+    data = request.get_json()
+    exec_id = data.get("execId")
+
+    if not exec_id:
+        return jsonify({"error": "execId is required"}), 400
+
+    try:
+        # Step 1: Fetch all log documents with the given exec_id
+        docs = list(mongo.db.ScriptLogs.find({"exec_id": exec_id}))
+        if not docs:
+            return jsonify({"error": "No logs found for this execId"}), 404
+
+        # Step 2: Merge and sort all lines by timestamp
+        all_lines = []
+        for doc in docs:
+            all_lines.extend(doc.get("lines", []))
+
+        all_lines.sort(key=lambda x: x.get("timestamp"))
+
+        # Step 3: Create log text
+        log_text = "\n".join([f"[{line['timestamp']}] {line['text']}" for line in all_lines])
+
+        # Step 4: Return as downloadable file
+        file_stream = io.BytesIO()
+        file_stream.write(log_text.encode("utf-8"))
+        file_stream.seek(0)
+
+        filename = f"script_logs_{exec_id}.txt"
+        return send_file(
+            file_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="text/plain"
+        )
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
