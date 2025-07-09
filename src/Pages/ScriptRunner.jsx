@@ -12,7 +12,7 @@ import {
   terminateScript as apiTerminateScript,
 } from '../services/ScriptRunner/ScriptRunnerServices';
 
-const socket = io(API_BASE, { transports: ['websocket'] });
+export const socket = io(API_BASE, { transports: ['websocket'] });
 
 socket.on('connect', () => {
   console.log('✅ Socket connected');

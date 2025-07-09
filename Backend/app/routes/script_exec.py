@@ -20,10 +20,8 @@ def run_script():
 
     script_code = script_doc.get("code")
 
-    # ✅ Generate a string _id manually
     exec_id = str(ObjectId())
 
-    # ✅ Save the _id explicitly as a string
     mongo.db.RunningScript.insert_one({
         "_id": exec_id,  # Set _id as a string
         "script": script_name,
@@ -89,3 +87,45 @@ def test_socket():
         }
     })
     return {"message": "Emitted"}
+
+
+@script_routes.route('/runCode', methods=['POST'])
+def run_code():
+    data = request.json
+    script_name = data.get("name")
+    loggedInUser = data.get("Cuid", "System")
+
+    if not script_name:
+        return jsonify({"error": "Missing scriptName"}), 400
+
+    script_doc = mongo.db.AllScript.find_one({"name": script_name})
+    # if not script_doc:
+    #     return jsonify({"error": "Script not found"}), 404
+
+    script_code = data.get("code")
+
+    exec_id = str(ObjectId())
+
+    mongo.db.RunningScript.insert_one({
+        "_id": exec_id,  # Set _id as a string
+        "script": script_name,
+        "status": "running",
+        "statusField": "status",
+        "collectionName": script_name,
+        "scriptType": script_doc.get("scriptType", "CodeEditor"),
+        "user": loggedInUser,
+        "ExecutedFrom":"CodeEditor",
+        "startTime": datetime.datetime.now(),
+        "scriptSubType": script_doc.get("scriptSubType", "CodeEditor"),
+        "createdAt": str(datetime.datetime.now().date()),
+        "statusList":{
+            "Fixed":0,
+            "Not Fixed":0,
+            "processedAccounts":0,
+            "Total":0
+        }
+    })
+
+    executeScript(script_name, script_code, exec_id, mongo.db.RunningScript)
+
+    return jsonify({"message": "Script started", "execId": exec_id}), 200

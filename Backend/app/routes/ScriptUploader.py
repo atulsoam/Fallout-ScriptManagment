@@ -136,7 +136,8 @@ def get_scripts():
             "isApproved":1,
             "isEnabled":1,
             "status":1,
-            "rejectionReason":1
+            "rejectionReason":1,
+            "tags":1
         }
     )
 
@@ -155,7 +156,8 @@ def get_scripts():
             "isApproved":script.get("isApproved",False),
             "isEnabled":script.get("isEnabled",False),
             "rejectionReason":script.get("rejectionReason","NA"),
-            "status":script.get("status","Pending")
+            "status":script.get("status","Pending"),
+            "tags":script.get("tags",[])
 
         })
 
