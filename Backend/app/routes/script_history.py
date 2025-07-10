@@ -10,6 +10,74 @@ import traceback
 
 @script_routes.route("/getscriptHistory", methods=["GET"])
 def script_history():
+    """
+    Get script execution history with filters and pagination.
+    ---
+    tags:
+      - ScriptHistory
+    parameters:
+      - in: header
+        name: X-CUID
+        type: string
+        required: false
+        description: User CUID
+      - in: query
+        name: page
+        type: integer
+        required: false
+        description: Page number (default 0)
+      - in: query
+        name: pageSize
+        type: integer
+        required: false
+        description: Page size (default 50)
+      - in: query
+        name: filters
+        type: string
+        required: false
+        description: JSON string with filters (status, scriptType, searchTerm, fromDate, toDate)
+      - in: query
+        name: sortField
+        type: string
+        required: false
+        description: Field to sort by (default startTime)
+      - in: query
+        name: sortOrder
+        type: integer
+        required: false
+        description: Sort order (-1 for DESC, 1 for ASC)
+    responses:
+      200:
+        description: Script history data
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+            totalCount:
+              type: integer
+            scriptTypes:
+              type: array
+              items:
+                type: string
+            statuses:
+              type: array
+              items:
+                type: string
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                pageSize:
+                  type: integer
+      400:
+        description: Invalid parameters
+      500:
+        description: Internal server error
+    """
     try:
         # --- Pagination & Filters ---
         # print(session["user"])
@@ -133,6 +201,40 @@ def script_history():
 
 @script_routes.route("/exportScriptData", methods=["POST"])
 def export_script_data():
+    """
+    Export script data as Excel file.
+    ---
+    tags:
+      - ScriptHistory
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            collectionName:
+              type: string
+              example: "MyCollection"
+            scriptId:
+              type: string
+              example: "60d..."
+            status:
+              type: string
+              example: "all"
+    responses:
+      200:
+        description: Excel file with script data
+        schema:
+          type: string
+          format: binary
+      400:
+        description: Missing parameters
+      404:
+        description: No data found
+      500:
+        description: Server error
+    """
     try:
         data = request.get_json()
         collection_name = data.get("collectionName")
@@ -183,6 +285,42 @@ def export_script_data():
 @script_routes.route("/getScriptDataByType", methods=["POST"])
 def get_script_data_by_type():
     try:
+        """
+    Get script data by type (Fixed, Not Fixed, All).
+    ---
+    tags:
+      - ScriptHistory
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            collectionName:
+              type: string
+              example: "MyCollection"
+            scriptId:
+              type: string
+              example: "60d..."
+            type:
+              type: string
+              example: "Fixed"
+    responses:
+      200:
+        description: Filtered script data
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+      400:
+        description: Missing parameters
+      500:
+        description: Server error
+    """
         data = request.json
         collection_name = data.get("collectionName")
         script_id = data.get("scriptId")
@@ -211,6 +349,34 @@ def get_script_data_by_type():
 
 @script_routes.route('/downloadScriptLogs', methods=['POST'])
 def download_script_logs():
+    """
+    Download logs for a script execution as a text file.
+    ---
+    tags:
+      - ScriptHistory
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            execId:
+              type: string
+              example: "60d..."
+    responses:
+      200:
+        description: Log file
+        schema:
+          type: string
+          format: binary
+      400:
+        description: execId is required
+      404:
+        description: No logs found
+      500:
+        description: Server error
+    """
     data = request.get_json()
     exec_id = data.get("execId")
 

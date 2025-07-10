@@ -13,6 +13,21 @@ def update_admin_controls_list(field, cuid, action):
 
 @script_routes.route('/approvers', methods=['GET'])
 def get_approvers():
+    """
+    Get the list of approvers.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of approvers
+        schema:
+          type: array
+          items:
+            type: string
+      404:
+        description: No approver list found
+    """
     document = mongo.db.AdminControlls.find_one()
     
     if document and 'approverList' in document:
@@ -24,6 +39,51 @@ def get_approvers():
 @script_routes.route('/admin/create-user', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def create_user():
+    """
+    Create a new user (admin only).
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+            password:
+              type: string
+              example: "password123"
+            isAdmin:
+              type: boolean
+              example: false
+            email:
+              type: string
+              example: "user@example.com"
+            username:
+              type: string
+              example: "User Name"
+            createdBy:
+              type: string
+              example: "admin123"
+    responses:
+      201:
+        description: User created successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: CUID and password are required
+      409:
+        description: User already exists
+      500:
+        description: Server error
+    """
     try:
         data = request.get_json()
         cuid = data.get('cuid')
@@ -62,6 +122,21 @@ def create_user():
 @script_routes.route('/admin/users', methods=['GET'])
 @require_roles_from_admin_controls(['admin'])
 def list_users():
+    """
+    List all users (admin only).
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of users
+        schema:
+          type: array
+          items:
+            type: object
+      500:
+        description: Server error
+    """
     try:
         users = list(mongo.db.ScriptManagmentUsers.find({}, {"_id": 0}))
         return jsonify(users), 200
@@ -71,6 +146,36 @@ def list_users():
 @script_routes.route('/admin/add-approver', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def add_approver():
+    """
+    Add a user as an approver.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+    responses:
+      200:
+        description: Approver added successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Missing cuid
+      404:
+        description: Please enter a valid CUID
+      500:
+        description: Server error
+    """
     try:
         cuid = request.get_json().get("cuid")
         if not cuid:
@@ -89,6 +194,36 @@ def add_approver():
 @script_routes.route('/admin/add-admin', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def add_admin():
+    """
+    Add a user as an admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+    responses:
+      200:
+        description: Admin added successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Missing cuid
+      404:
+        description: Please enter a valid CUID
+      500:
+        description: Server error
+    """
     try:
         cuid = request.get_json().get("cuid")
         if not cuid:
@@ -107,6 +242,36 @@ def add_admin():
 @script_routes.route('/admin/remove-approver', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def remove_approver():
+    """
+    Remove a user from approvers.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+    responses:
+      200:
+        description: Approver removed successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Missing cuid
+      404:
+        description: Please enter a valid CUID
+      500:
+        description: Server error
+    """
     try:
         cuid = request.get_json().get("cuid")
         if not cuid:
@@ -125,6 +290,36 @@ def remove_approver():
 @script_routes.route('/admin/remove-admin', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def remove_admin():
+    """
+    Remove a user from admins.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+    responses:
+      200:
+        description: Admin removed successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Missing cuid
+      404:
+        description: Please enter a valid CUID
+      500:
+        description: Server error
+    """
     try:
         cuid = request.get_json().get("cuid")
         if not cuid:
@@ -143,6 +338,35 @@ def remove_admin():
 @script_routes.route('/admin/update-user/<cuid>', methods=['PUT'])
 @require_roles_from_admin_controls(['admin'])
 def update_user(cuid):
+    """
+    Update user details.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: path
+        name: cuid
+        type: string
+        required: true
+        description: CUID of the user to update
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+    responses:
+      200:
+        description: User updated or no changes
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      404:
+        description: Please use a valid CUID
+      500:
+        description: Server error
+    """
     try:
         updates = request.get_json()
         record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
@@ -159,6 +383,34 @@ def update_user(cuid):
 @script_routes.route('/admin/delete-user', methods=['POST'])
 @require_roles_from_admin_controls(['admin'])
 def delete_user():
+    """
+    Delete a user.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+    responses:
+      200:
+        description: User deleted successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Missing cuid
+      500:
+        description: Server error
+    """
     try:
         cuid = request.get_json().get("cuid")
         if not cuid:
@@ -173,6 +425,38 @@ def delete_user():
 
 @script_routes.route('/admin/is-admin/<cuid>', methods=['GET'])
 def is_user_admin(cuid):
+    """
+    Check if a user is admin or approver.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: path
+        name: cuid
+        type: string
+        required: true
+        description: CUID of the user
+    responses:
+      200:
+        description: User admin/approver status
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+            username:
+              type: string
+            email:
+              type: string
+            isAdmin:
+              type: boolean
+            isApprover:
+              type: boolean
+      404:
+        description: User not found
+      500:
+        description: Server error
+    """
     try:
         user = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
         if not user:
@@ -192,6 +476,30 @@ def is_user_admin(cuid):
 @script_routes.route('/admin/approve/<job_id>', methods=['PATCH'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def approveSchedule_script(job_id):
+    """
+    Approve a scheduled job.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: path
+        name: job_id
+        type: string
+        required: true
+        description: Job ID to approve
+    responses:
+      200:
+        description: Job approved and scheduled
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      404:
+        description: Job not found
+      500:
+        description: Scheduling failed
+    """
     job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404
@@ -221,6 +529,39 @@ def approveSchedule_script(job_id):
 @script_routes.route('/admin/reject/<job_id>', methods=['PATCH'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def rejectSchedule_script(job_id):
+    """
+    Reject a scheduled job.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - in: path
+        name: job_id
+        type: string
+        required: true
+        description: Job ID to reject
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            rejectReason:
+              type: string
+              example: "Reason for rejection"
+    responses:
+      200:
+        description: Job rejected and disabled
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      404:
+        description: Job not found
+      500:
+        description: Server error
+    """
     updates = request.get_json()
     rejectReason = updates.get("rejectReason","Na")
     job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
@@ -250,6 +591,24 @@ def rejectSchedule_script(job_id):
 @script_routes.route('/admin/pending-approvals/all-scripts', methods=['GET'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def get_pending_approvals_from_all_scripts():
+    """
+    Get all pending script approvals.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of pending scripts
+        schema:
+          type: object
+          properties:
+            pendingScripts:
+              type: array
+              items:
+                type: object
+      500:
+        description: Server error
+    """
     try:
         pending_scripts = list(mongo.db.AllScript.find(
             {
@@ -267,6 +626,24 @@ def get_pending_approvals_from_all_scripts():
 @script_routes.route('/admin/pending-approvals/scheduled-scripts', methods=['GET'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def get_pending_approvals_from_scheduled_scripts():
+    """
+    Get all pending scheduled script approvals.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of pending scheduled scripts
+        schema:
+          type: object
+          properties:
+            pendingScheduled:
+              type: array
+              items:
+                type: object
+      500:
+        description: Server error
+    """
     try:
         pending_scheduled = list(mongo.db.ScheduledJobs.find(
             {
@@ -283,6 +660,26 @@ def get_pending_approvals_from_scheduled_scripts():
 @script_routes.route('/admin/pending-approvals', methods=['GET'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def get_pending_approvals_for_all():
+    """
+    Get counts of all pending approvals (scripts and scheduled jobs).
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: Pending approvals count
+        schema:
+          type: object
+          properties:
+            scheduledCount:
+              type: integer
+            scriptCount:
+              type: integer
+            totalPending:
+              type: integer
+      500:
+        description: Server error
+    """
     try:
         # Get count of unapproved, pending ScheduledJobs
         scheduled_count = mongo.db.ScheduledJobs.count_documents({

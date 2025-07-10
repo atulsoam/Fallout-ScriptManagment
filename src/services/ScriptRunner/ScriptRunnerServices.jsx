@@ -43,3 +43,9 @@ export const terminateScript = async (execId, setLoading) => {
     if (setLoading) setLoading(false);
   }
 };
+
+export const runCode = (payload) => {
+  const storedAuth = JSON.parse(localStorage.getItem("authToken") || "{}");
+  const cuid = storedAuth.cuid || "";
+  return axios.post(`${API_BASE}/runCode`, { ...payload, "Cuid": cuid });
+};

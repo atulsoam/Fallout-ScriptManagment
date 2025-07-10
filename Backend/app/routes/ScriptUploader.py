@@ -8,6 +8,56 @@ from app.services.auth_service import require_roles_from_admin_controls
 
 @script_routes.route('/upload', methods=['POST'])
 def upload_script():
+    """
+    Upload a new script or update an existing one.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "MyScript.py"
+            code:
+              type: string
+              example: "print('Hello')"
+            uploadedBy:
+              type: string
+              example: "user123"
+            approver:
+              type: string
+              example: "approver123"
+            description:
+              type: string
+              example: "This script does X"
+            scriptType:
+              type: string
+              example: "System"
+            scriptSubType:
+              type: string
+              example: "Utility"
+            tags:
+              type: array
+              items:
+                type: string
+    responses:
+      201:
+        description: Script uploaded or updated
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            script_id:
+              type: string
+      400:
+        description: Missing required fields
+    """
     if not request.is_json:
         return jsonify({"error": "Expected JSON data"}), 400
 
@@ -56,6 +106,39 @@ def upload_script():
 @script_routes.route('/approve/<script_id>', methods=['POST'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def approve_script(script_id):
+    """
+    Approve a script by ID.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: path
+        name: script_id
+        type: string
+        required: true
+        description: Script ID to approve
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "approver123"
+    responses:
+      200:
+        description: Script approved successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Approver is required
+      404:
+        description: Script not found
+    """
     data = request.get_json()
     approver = data.get("cuid")
     
@@ -87,6 +170,42 @@ def approve_script(script_id):
 @script_routes.route('/reject/<script_id>', methods=['POST'])
 @require_roles_from_admin_controls(['admin', 'approver'])
 def reject_script(script_id):
+    """
+    Reject a script by ID.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: path
+        name: script_id
+        type: string
+        required: true
+        description: Script ID to reject
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "approver123"
+            reason:
+              type: string
+              example: "Reason for rejection"
+    responses:
+      200:
+        description: Script rejected successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Approver and rejection reason are required
+      404:
+        description: Script not found
+    """
     data = request.get_json()
     approver = data.get("cuid")
     reason = data.get("reason", "").strip()
@@ -121,6 +240,19 @@ def reject_script(script_id):
 
 @script_routes.route("/scripts", methods=["GET"])
 def get_scripts():
+    """
+    Get all approved and enabled scripts.
+    ---
+    tags:
+      - ScriptUploader
+    responses:
+      200:
+        description: List of scripts
+        schema:
+          type: array
+          items:
+            type: object
+    """
     scripts = mongo.db.AllScript.find(
         {"isApproved": True, "isEnabled": True},  # Filter
         {
@@ -136,7 +268,8 @@ def get_scripts():
             "isApproved":1,
             "isEnabled":1,
             "status":1,
-            "rejectionReason":1
+            "rejectionReason":1,
+            "tags":1
         }
     )
 
@@ -155,7 +288,8 @@ def get_scripts():
             "isApproved":script.get("isApproved",False),
             "isEnabled":script.get("isEnabled",False),
             "rejectionReason":script.get("rejectionReason","NA"),
-            "status":script.get("status","Pending")
+            "status":script.get("status","Pending"),
+            "tags":script.get("tags",[])
 
         })
 
@@ -165,6 +299,19 @@ def get_scripts():
 
 @script_routes.route("/AllScripts", methods=["GET"])
 def get_Allscripts():
+    """
+    Get all scripts (admin view).
+    ---
+    tags:
+      - ScriptUploader
+    responses:
+      200:
+        description: List of all scripts
+        schema:
+          type: array
+          items:
+            type: object
+    """
     scripts = mongo.db.AllScript.find(
         {},
         {
@@ -209,6 +356,50 @@ def get_Allscripts():
 
 @script_routes.route('/updateScripts/<script_id>', methods=['PUT'])
 def update_script(script_id):
+    """
+    Update script metadata or enable/disable.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: path
+        name: script_id
+        type: string
+        required: true
+        description: Script ID to update
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            description:
+              type: string
+              example: "Updated description"
+            scriptType:
+              type: string
+              example: "System"
+            scriptSubType:
+              type: string
+              example: "Utility"
+            isEnabled:
+              type: boolean
+              example: true
+    responses:
+      200:
+        description: Script updated successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: No valid fields to update
+      403:
+        description: Only approved scripts can be enabled or disabled
+      404:
+        description: Script not found
+    """
     if not request.is_json:
         return jsonify({"error": "Expected JSON data"}), 400
 
@@ -244,6 +435,28 @@ def update_script(script_id):
 # Delete script by ID
 @script_routes.route('/deleteScripts/<script_id>', methods=['DELETE'])
 def delete_script(script_id):
+    """
+    Delete a script by ID.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: path
+        name: script_id
+        type: string
+        required: true
+        description: Script ID to delete
+    responses:
+      200:
+        description: Script deleted successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      404:
+        description: Script not found
+    """
     all_scripts_col = mongo.db.AllScript
 
     result = all_scripts_col.delete_one({"_id": str(script_id)})
@@ -255,6 +468,17 @@ def delete_script(script_id):
 
 @script_routes.route("/getscriptcatogery", methods=["GET"])
 def scriptCatogeries():
+    """
+    Get all script categories and subcategories.
+    ---
+    tags:
+      - ScriptUploader
+    responses:
+      200:
+        description: Script categories and subcategories
+        schema:
+          type: object
+    """
     AllInfo = list(mongo.db.categorySubCategory.find())[0]
     del AllInfo["_id"]
     return jsonify(AllInfo)
@@ -262,6 +486,32 @@ def scriptCatogeries():
 
 @script_routes.route("/addScriptType", methods=["POST"])
 def AddScriptType():
+    """
+    Add a new script type.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            scriptType:
+              type: string
+              example: "NewType"
+    responses:
+      200:
+        description: Script type added successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Script type already exists
+    """
     data = request.json
     scriptType = data["scriptType"]
     AllInfo = list(mongo.db.categorySubCategory.find())[0]
@@ -276,6 +526,32 @@ def AddScriptType():
 
 @script_routes.route("/addScriptSubType", methods=["POST"])
 def AddScriptSubType():
+    """
+    Add a new script sub type.
+    ---
+    tags:
+      - ScriptUploader
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            scriptSubType:
+              type: string
+              example: "NewSubType"
+    responses:
+      200:
+        description: Script sub type added successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: Script sub type already exists
+    """
     data = request.json
     scriptSubType = data["scriptSubType"]
     AllInfo = list(mongo.db.categorySubCategory.find())[0]
