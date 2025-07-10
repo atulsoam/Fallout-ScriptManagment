@@ -8,11 +8,11 @@ from apscheduler.schedulers.background import BackgroundScheduler # type: ignore
 socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
 mongo = PyMongo()
 scheduler = BackgroundScheduler()
+FrontendURL = "http://localhost:5173"  # Update this to your frontend URL if needed
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
-
     CORS(app, supports_credentials=True)
     # Session(app)
     mongo.init_app(app)
