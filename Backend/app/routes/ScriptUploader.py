@@ -1,9 +1,10 @@
 from flask import request, jsonify,session
 from app.routes import script_routes
-from app import mongo
+from app import mongo,FrontendURL
 import datetime
 from bson import ObjectId
-from app.services.UniversalService import send_email_notification
+from app.services.UniversalService import send_email_notification,GetUserDetaials,GetInternalCCList
+from app.services.EmailBody import FrameEmailBody
 from app.services.auth_service import require_roles_from_admin_controls
 
 @script_routes.route('/upload', methods=['POST'])
@@ -99,7 +100,26 @@ def upload_script():
         all_scripts_col.insert_one(script_doc)
         script_id = str(_id)
         message = "Script uploaded and pending approval"
-
+      
+    currentUser = GetUserDetaials(data["uploadedBy"])
+    approveruser = GetUserDetaials(data["approver"])
+    CCList = GetInternalCCList()
+    framedBody = FrameEmailBody(
+    script_title=name,
+    script_author=currentUser["username"] if currentUser and currentUser.get("username") else data["uploadedBy"],
+    submission_date=str(datetime.datetime.now().date()),
+    script_description=data.get("description", ""),
+    action_required=True,
+    info_link=f"{FrontendURL}/adminRequests",
+    recipient_name=approveruser["username"] if approveruser and approveruser.get("username") else data["approver"],
+)
+        
+    send_email_notification(
+            receiverlist=[approveruser["email"] if approveruser and approveruser.get("email") else data["approver"]],
+            CCList=CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else data["uploadedBy"]),
+            subject=f"Script {name} Uploaded for Approval",
+            body=framedBody,
+        )
     return jsonify({"message": message, "script_id": script_id}), 201
 
 
@@ -158,11 +178,26 @@ def approve_script(script_id):
         {"_id": script_id},
         {"$set": {"isApproved": True,"isEnabled": True, "status": "Approved", "approvedAt": str(datetime.datetime.now())}}
     )
-    # send_email_notification(
-    # to_email=script["uploadedBy"],
-    # subject="Script Approval Update",
-    # body=f"Your script '{script['name']}' has been approved."  # or rejected with reason
-    # )
+    currentUser = GetUserDetaials(script["uploadedBy"])
+    approveruser = GetUserDetaials(approver)
+    CCList = GetInternalCCList()
+    framedBody = FrameEmailBody(
+        script_title=script["name"],
+        script_author=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
+        submission_date=script["uploadedAt"],
+        script_description=script.get("description", ""),
+        action_required=False,
+        info_link=f"{FrontendURL}/upload",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
+        Information=f"""Your script '{script['name']}' has been Approved by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.""",
+    )
+        
+    send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else script["uploadedBy"]],
+            CCList=CCList,
+            subject=f"Script {script["name"]} Approved",
+            body=framedBody,
+        )
 
 
     return jsonify({"message": "Script approved successfully"}), 200
@@ -233,8 +268,28 @@ def reject_script(script_id):
         }}
     )
 
-    # Send email notification to uploader
-    # send_email_notification(script["uploadedBy"], f"Script '{script['name']}' was rejected", reason)
+    currentUser = GetUserDetaials(script["uploadedBy"])
+    approveruser = GetUserDetaials(approver)
+    CCList = GetInternalCCList()
+    framedBody = FrameEmailBody(
+        script_title=script["name"],
+        script_author=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
+        submission_date=script["uploadedAt"],
+        script_description=script.get("description", ""),
+        action_required=False,
+        info_link=f"{FrontendURL}/upload",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
+        Information=f"""Your script '{script['name']}' has been Rejected by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.
+        Reason for rejection: {reason}
+        """,
+    )
+        
+    send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else script["uploadedBy"]],
+            CCList=CCList,
+            subject=f"Script {script["name"]} Rejected",
+            body=framedBody,
+        )
 
     return jsonify({"message": "Script rejected successfully"}), 200
 
