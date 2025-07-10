@@ -107,7 +107,7 @@ def upload_script():
     framedBody = FrameEmailBody(
     script_title=name,
     script_author=currentUser["username"] if currentUser and currentUser.get("username") else data["uploadedBy"],
-    submission_date=str(datetime.datetime.now()),
+    submission_date=str(datetime.datetime.now().date()),
     script_description=data.get("description", ""),
     action_required=True,
     info_link=f"{FrontendURL}/adminRequests",
