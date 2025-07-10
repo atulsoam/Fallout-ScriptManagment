@@ -31,6 +31,37 @@ def signup():
 
 @script_routes.route('/login', methods=['POST'])
 def login():
+    """
+    Log in a user.
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            cuid:
+              type: string
+              example: "user123"
+            password:
+              type: string
+              example: "password123"
+    responses:
+      200:
+        description: Login successful
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            user:
+              type: object
+      401:
+        description: Invalid CUID or password
+    """
     data = request.get_json()
     cuid = data.get('cuid')
     password = data.get('password')
@@ -55,5 +86,19 @@ def login():
 
 @script_routes.route('/logout', methods=['POST'])
 def logout():
+    """
+    Log out the current user.
+    ---
+    tags:
+      - Auth
+    responses:
+      200:
+        description: Logged out successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+    """
     session.pop('user', None)
     return jsonify({'message': 'Logged out successfully'}), 200

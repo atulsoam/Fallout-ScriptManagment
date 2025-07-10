@@ -1,6 +1,8 @@
 from app import mongo
 
 def getcollectionDetails(collection, requestedScript):
+    StatusDb = mongo.cx['PROD_BM_ANALYTICS']
+    collection = StatusDb[collection]
     collectionOutput_fixed = 0
     collectionOutput_pending = 0
     collectionOutput_total = 0
@@ -9,16 +11,16 @@ def getcollectionDetails(collection, requestedScript):
 
     try:
         collectionOutput_fixed = list(
-            mongo.db[collection].find({"status": "Fixed", "ScriptidentificationId": requestedScript})
+            collection.find({"status": "Fixed", "ScriptidentificationId": requestedScript})
         )
         collectionOutput_pending = list(
-            mongo.db[collection].find({"status": "Not Fixed", "ScriptidentificationId": requestedScript})
+            collection.find({"status": "Not Fixed", "ScriptidentificationId": requestedScript})
         )
         collectionOutput_total = list(
-            mongo.db[collection].find({"ScriptidentificationId": requestedScript})
+            collection.find({"ScriptidentificationId": requestedScript})
         )
         processedAccounts = list(
-            mongo.db[collection].find({"otherDetail": "processedAccounts", "ScriptidentificationId": requestedScript})
+            collection.find({"otherDetail": "processedAccounts", "ScriptidentificationId": requestedScript})
         )
 
         if processedAccounts:

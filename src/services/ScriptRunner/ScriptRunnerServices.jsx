@@ -30,7 +30,9 @@ export const getRunningScripts = async (setLoading) => {
 
 export const runScript = (scriptName) => {
   // runScript already has its own loading handling
-  return axios.post(`${API_BASE}/run-script`, { scriptName });
+  const storedAuth = JSON.parse(localStorage.getItem("authToken") || "{}");
+  const cuid = storedAuth.cuid || "";
+  return axios.post(`${API_BASE}/run-script`, { scriptName, "Cuid": cuid });
 };
 
 export const terminateScript = async (execId, setLoading) => {
@@ -40,4 +42,10 @@ export const terminateScript = async (execId, setLoading) => {
   } finally {
     if (setLoading) setLoading(false);
   }
+};
+
+export const runCode = (payload) => {
+  const storedAuth = JSON.parse(localStorage.getItem("authToken") || "{}");
+  const cuid = storedAuth.cuid || "";
+  return axios.post(`${API_BASE}/runCode`, { ...payload, "Cuid": cuid });
 };

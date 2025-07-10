@@ -16,6 +16,7 @@ import Logout from './Auth/Logout';
 import { checkIfAdmin } from './services/auth/authServices';
 import PendingApprovals from './Pages/PendingApprovals';
 import Footer from '../src/Components/UI/Footer';
+import EditorLayout from './Pages/CoderEditor';
 
 function App() {
   const location = useLocation();
@@ -94,6 +95,7 @@ function App() {
             <Route path="/upload" element={<ScriptManagerPage />} />
             <Route path="/scriptRunner" element={<ScriptRunner />} />
             <Route path="/SchedulerPage" element={<SchedulerPage />} />
+            <Route path="/Code" element={<EditorLayout />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/adminRequests" element={<PendingApprovals />} />
             <Route path="/logout" element={<Logout />} />
