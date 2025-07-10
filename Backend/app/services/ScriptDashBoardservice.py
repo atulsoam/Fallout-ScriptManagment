@@ -233,7 +233,7 @@ def get_script_metadata_summary(all_scripts):
     by_enable = Counter(s["isEnabled"] for s in all_scripts)
     by_uploader = Counter(s["uploadedBy"] for s in all_scripts)
     by_approver = Counter(s["approver"] for s in all_scripts if s.get("approver"))
-    by_tag = Counter(tag for s in all_scripts for tag in s.get("tags", []))
+    by_tag = Counter(tag.get("modifiedBy") for s in all_scripts for tag in s.get("tags", []) if isinstance(tag, dict))
     return {
         "ByApproval": dict(by_approval),
         "ByEnable": dict(by_enable),
