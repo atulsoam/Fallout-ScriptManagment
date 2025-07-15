@@ -1,6 +1,6 @@
 from flask import request, jsonify,send_file,session
 from app.routes import script_routes
-from app import mongo
+from app import mongo,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION,ANALYTICS_DB as StatusDb
 from app.services.script_service import getcollectionDetails
 from datetime import datetime,timedelta
 import json
@@ -133,11 +133,11 @@ def script_history():
                 return jsonify(error="Invalid date format. Use YYYY-MM-DD"), 400
 
         # --- Count Total Results ---
-        total_count = mongo.db.RunningScript.count_documents(query)
+        total_count = SCRIPTS_EXECUTION_COLLECTION.count_documents(query)
 
         # --- Data Retrieval with Sorting ---
         cursor = (
-            mongo.db.RunningScript.find(query)
+            SCRIPTS_EXECUTION_COLLECTION.find(query)
             .sort(sort_field, sort_order)
             .skip(page * pageSize)
             .limit(pageSize)
@@ -149,7 +149,7 @@ def script_history():
             try:
                 if doc.get("status") == "Running":
                     fixed, not_fixed, total, processed = getcollectionDetails(
-                        doc.get("collectionName", ""), doc["_id"]
+                        StatusDb[doc.get("collectionName", "")], doc["_id"]
                     )
                 else:
                     status_list = doc.get("statusList", {})
@@ -179,8 +179,8 @@ def script_history():
             })
 
         # --- Fetch Distinct Values for Filters ---
-        script_types = [v for v in mongo.db.RunningScript.distinct("scriptType") if v]
-        statuses = [v for v in mongo.db.RunningScript.distinct("status") if v]
+        script_types = [v for v in SCRIPTS_EXECUTION_COLLECTION.distinct("scriptType") if v]
+        statuses = [v for v in SCRIPTS_EXECUTION_COLLECTION.distinct("status") if v]
 
         return jsonify({
             "data": result,
@@ -249,7 +249,7 @@ def export_script_data():
             query["status"] = status
         query["ScriptidentificationId"] = script_id
         # Fetch full data from the specified collection
-        documents = list(mongo.db[collection_name].find(query))
+        documents = list(StatusDb[collection_name].find(query))
 
         if not documents:
             return jsonify({"error": "No data found in the specified collection."}), 404
@@ -329,8 +329,6 @@ def get_script_data_by_type():
         if not collection_name or not script_id or not filter_type:
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # collection = mongo.db[collection_name]
-        StatusDb = mongo.cx['PROD_BM_ANALYTICS']
         collection = StatusDb[collection_name]  # Use the custom database
         query = {"ScriptidentificationId": script_id}
         if filter_type != "All":
@@ -385,7 +383,7 @@ def download_script_logs():
 
     try:
         # Step 1: Fetch all log documents with the given exec_id
-        docs = list(mongo.db.ScriptLogs.find({"exec_id": exec_id}))
+        docs = list(LOGS_COLLECTION.find({"exec_id": exec_id}))
         if not docs:
             return jsonify({"error": "No logs found for this execId"}), 404
 

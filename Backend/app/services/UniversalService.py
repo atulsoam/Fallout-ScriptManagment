@@ -4,7 +4,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from email.utils import formataddr
-from app import mongo
+from app import mongo,USERS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
 from datetime import datetime
 import os
 
@@ -95,7 +95,7 @@ def StoreEmailRecords(record):
     """
     try:
         record["createdAt"] = datetime.now()
-        mongo.db.EmailRecordsScriptMGMT.insert_one(record)
+        EMAIL_RECORD.insert_one(record)
     except Exception as e:
         print("Failed to store email record:", e)
 
@@ -110,7 +110,7 @@ def GetUserDetaials(cuid):
         dict: User details if found, otherwise None.
     """
     try:
-        user = mongo.db.ScriptManagmentUsers.find_one({"_id": cuid})
+        user = USERS_COLLECTION.find_one({"_id": cuid})
         return user if user else None
     except Exception as e:
         print(f"Error retrieving user details for {cuid}: {e}")
@@ -124,7 +124,7 @@ def GetAllApproversOrAdmin(isApprover=False,isAdmin=False):
             query["isApprover"] = True
         if isAdmin:
             query["isAdmin"] = True
-        user = mongo.db.ScriptManagmentUsers.find(query)
+        user = USERS_COLLECTION.find(query)
         return user if user else None
     except Exception as e:
         print(f"Error retrieving user details : {e}")
@@ -138,7 +138,7 @@ def GetInternalCCList():
         list: List of email addresses to be used in CC.
     """
     try:
-        cc_list = mongo.db.EmailConfig.find_one({"_id": "InternalCCList"})
+        cc_list = EMAIL_CONFIG.find_one({"_id": "InternalCCList"})
         return cc_list["emails"] if cc_list and "emails" in cc_list else []
     except Exception as e:
         print(f"Error retrieving common CC list: {e}")

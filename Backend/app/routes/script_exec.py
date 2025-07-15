@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio
+from app import mongo,socketio,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION
 from app.services.script_executor import run_script as executeScript,stop_script,get_running_scripts
 import datetime
 from app.routes import script_routes
@@ -47,7 +47,7 @@ def run_script():
     if not script_name:
         return jsonify({"error": "Missing scriptName"}), 400
 
-    script_doc = mongo.db.AllScript.find_one({"name": script_name})
+    script_doc = SCRIPTS_COLLECTION.find_one({"name": script_name})
     if not script_doc:
         return jsonify({"error": "Script not found"}), 404
 
@@ -55,7 +55,7 @@ def run_script():
 
     exec_id = str(ObjectId())
 
-    mongo.db.RunningScript.insert_one({
+    SCRIPTS_EXECUTION_COLLECTION.insert_one({
         "_id": exec_id,  # Set _id as a string
         "script": script_name,
         "status": "running",
@@ -75,7 +75,7 @@ def run_script():
         }
     })
 
-    executeScript(script_name, script_code, exec_id, mongo.db.RunningScript)
+    executeScript(script_name, script_code, exec_id, SCRIPTS_EXECUTION_COLLECTION)
 
     return jsonify({"message": "Script started", "execId": exec_id}), 200
 
@@ -165,7 +165,7 @@ def FetchLogs():
     if not exec_id:
         return jsonify({"error": "Missing execId"}), 400
 
-    logs_cursor = mongo.db.ScriptLogs.find({"exec_id": exec_id}).sort("timestamp", 1)
+    logs_cursor = LOGS_COLLECTION.find({"exec_id": exec_id}).sort("timestamp", 1)
     logs = []
 
     for doc in logs_cursor:
@@ -243,7 +243,7 @@ def run_code():
     if not script_name:
         return jsonify({"error": "Missing scriptName"}), 400
 
-    script_doc = mongo.db.AllScript.find_one({"name": script_name})
+    script_doc = SCRIPTS_COLLECTION.find_one({"name": script_name})
     # if not script_doc:
     #     return jsonify({"error": "Script not found"}), 404
 
@@ -251,7 +251,7 @@ def run_code():
 
     exec_id = str(ObjectId())
 
-    mongo.db.RunningScript.insert_one({
+    SCRIPTS_EXECUTION_COLLECTION.insert_one({
         "_id": exec_id,  # Set _id as a string
         "script": script_name,
         "status": "running",
@@ -271,7 +271,7 @@ def run_code():
         }
     })
 
-    executeScript(script_name, script_code, exec_id, mongo.db.RunningScript)
+    executeScript(script_name, script_code, exec_id, SCRIPTS_EXECUTION_COLLECTION)
 
     return jsonify({"message": "Script started", "execId": exec_id}), 200
 

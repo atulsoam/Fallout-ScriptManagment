@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio,FrontendURL
+from app import mongo,socketio,FRONTEND_URL,SCHEDULES_COLLECTION
 import datetime
 from app.routes import script_routes
 from bson import ObjectId
@@ -118,7 +118,7 @@ def schedule():
         submission_date=str(datetime.datetime.now().date()),
         script_description=data.get("description", ""),
         action_required=True,
-        info_link=f"{FrontendURL}/adminRequests",
+        info_link=f"{FRONTEND_URL}/adminRequests",
         recipient_name="All Approvers",
 
         msg=f"""{currentUser.get("username","")} has requested your approval to schedule a script: {script_name}""",
@@ -223,7 +223,7 @@ def list_jobs():
           items:
             type: object
     """
-    jobs_cursor = mongo.db.ScheduledJobs.find()
+    jobs_cursor = SCHEDULES_COLLECTION.find()
     jobs = [serialize_job(job) for job in jobs_cursor]
     return jsonify(jobs)
 
@@ -249,7 +249,7 @@ def get_job(job_id):
       404:
         description: Job not found
     """
-    job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify(serialize_job(job))
