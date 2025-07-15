@@ -1,4 +1,4 @@
-from flask import request, jsonify,session
+from flask import request, jsonify,session # type: ignore
 from app.routes import script_routes
 from app import mongo,FrontendURL
 import datetime
@@ -112,6 +112,7 @@ def upload_script():
     action_required=True,
     info_link=f"{FrontendURL}/adminRequests",
     recipient_name=approveruser["username"] if approveruser and approveruser.get("username") else data["approver"],
+    msg=f"""{currentUser.get("username","")} has uploaded a new script and wants your approval""",
 )
         
     send_email_notification(
@@ -190,6 +191,7 @@ def approve_script(script_id):
         info_link=f"{FrontendURL}/upload",
         recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
         Information=f"""Your script '{script['name']}' has been Approved by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.""",
+        msg=f"""An action has been taken on your script: {script['name']}""",
     )
         
     send_email_notification(
@@ -282,6 +284,7 @@ def reject_script(script_id):
         Information=f"""Your script '{script['name']}' has been Rejected by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.
         Reason for rejection: {reason}
         """,
+        msg=f"""An action has been taken on your script: {script['name']}""",
     )
         
     send_email_notification(

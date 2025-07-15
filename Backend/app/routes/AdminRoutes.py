@@ -122,9 +122,10 @@ def create_user():
         action_required=False,
         info_link=f"{FrontendURL}/login",
         recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else username,
-        Information=f"""Your account has been created successfully. You can now log in with cred.
+        Information=f"""You can now log in with cred.
         Cuid : {cuid}
           password : {password}""",
+          msg = f"""{currentUser["username"]}, your account has been created successfully."""
 
         )
         send_email_notification(
@@ -620,29 +621,30 @@ def approveSchedule_script(job_id):
                 metadata=job.get("metadata"),
                 enabled=True
             )
-            currentUser = GetUserDetaials(job["uploadedBy"])
-            approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
-            CCList = GetInternalCCList()
-            finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["uploadedBy"])
-            framedBody = FrameEmailBody(
-            script_title=job["name"],
-            script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
-            submission_date=str(datetime.datetime.now().date()),
-            action_required=False,
-            info_link=f"{FrontendURL}/SchedulerPage",
-            recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["uploadedBy"],
-            Information="Your script has been approved and scheduled.",
-        )
-                
-            send_email_notification(
-                    receiverlist= currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"],
-                    CCList= finalCClist,
-                    subject=f"Script {job['name']} approved and scheduled",
-                    body=framedBody,
-                )
+            
         except Exception as e:
             return jsonify({"error": f"Approved but scheduling failed: {e}"}), 500
-
+    currentUser = GetUserDetaials(job["Cuid"])
+    # approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+    CCList = GetInternalCCList()
+    finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["Cuid"])
+    framedBody = FrameEmailBody(
+    script_title=job["scriptName"],
+    script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+    submission_date=str(datetime.datetime.now().date()),
+    action_required=False,
+    info_link=f"{FrontendURL}/SchedulerPage",
+    recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["Cuid"],
+    Information="Your script has been approved and scheduled.",
+    msg=f"""An action has been taken on your script: {job['scriptName']}""",
+)
+        
+    send_email_notification(
+            receiverlist= [currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList= finalCClist,
+            subject=f"Script {job['scriptName']} approved and scheduled",
+            body=framedBody,
+        )
     return jsonify({"message": f"Job {job_id} approved and scheduled"}), 200
 
 
@@ -702,30 +704,31 @@ def rejectSchedule_script(job_id):
     try:
         from app import scheduler
         scheduler.remove_job(job_id)
-        currentUser = GetUserDetaials(job["uploadedBy"])
-        approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
-        CCList = GetInternalCCList()
-        finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["uploadedBy"])
-        framedBody = FrameEmailBody(
-        script_title=job["name"],
-        script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
         
-        submission_date=str(job.get("createdAt", datetime.datetime.now().date())),
-        action_required=False,
-        info_link=f"{FrontendURL}/SchedulerPage",
-        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["uploadedBy"],
-        Information= f"Your script has been rejected. Reason: {rejectReason}",
-    )
-            
-        send_email_notification(
-                receiverlist= currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"],
-                CCList=finalCClist,
-                subject=f"Script {job['name']} rejected",
-                body=framedBody,
-            )
     except Exception:
         pass  # In case it wasn't scheduled yet
+    currentUser = GetUserDetaials(job["Cuid"])
+    # approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+    CCList = GetInternalCCList()
 
+    framedBody = FrameEmailBody(
+    script_title=job["scriptName"],
+    script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+    
+    submission_date=str(job.get("createdAt", datetime.datetime.now().date())),
+    action_required=False,
+    info_link=f"{FrontendURL}/SchedulerPage",
+    recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["Cuid"],
+    Information= f"Your script has been rejected. Reason: {rejectReason}",
+    msg=f"""An action has been taken on your script: {job['scriptName']}""",
+)
+        
+    send_email_notification(
+            receiverlist= [currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList=CCList,
+            subject=f"Script {job['scriptName']} rejected",
+            body=framedBody,
+        )
     return jsonify({"message": f"Job {job_id} rejected and disabled"}), 200
 
 

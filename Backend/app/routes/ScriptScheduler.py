@@ -111,6 +111,7 @@ def schedule():
         currentUser = GetUserDetaials(cuid)
         approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
         CCList = GetInternalCCList()
+        finalCCList = [currentUser["email"] if currentUser and currentUser.get("email") else data["uploadedBy"]]  + CCList
         framedBody = FrameEmailBody(
         script_title=script_name,
         script_author=currentUser["username"] if currentUser and currentUser.get("username") else data["uploadedBy"],
@@ -119,10 +120,12 @@ def schedule():
         action_required=True,
         info_link=f"{FrontendURL}/adminRequests",
         recipient_name="All Approvers",
+
+        msg=f"""{currentUser.get("username","")} has requested your approval to schedule a script: {script_name}""",
         )
         send_email_notification(
             receiverlist=[approveruser["email"] if approveruser and approveruser.get("email") else approveruser["cuid"] for approveruser in approverusers],
-            CCList=CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else data["uploadedBy"]),
+            CCList=finalCCList,
             subject=f"Script {script_name} scheduled for approval",
             body=framedBody,
         )
