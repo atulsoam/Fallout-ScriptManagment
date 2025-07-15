@@ -4,6 +4,7 @@ from functools import wraps
 from app import mongo, scheduler,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION
 from app.services.script_executor import run_script as executeScript
 from bson import ObjectId
+from config import Config
 
 def track_job_run(exec_func):
     @wraps(exec_func)
@@ -198,7 +199,7 @@ def unschedule_script(job_id):
         return False
 
 def load_existing_schedules():
-    jobs = SCHEDULES_COLLECTION.find({"enabled": True, "isApproved": True})
+    jobs = mongo.cx[Config.SCRIPT_DB][Config.SCHEDULES_COLLECTION].find({"enabled": True, "isApproved": True})
     for job in jobs:
         try:
             schedule_script(
