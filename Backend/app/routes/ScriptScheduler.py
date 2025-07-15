@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio
+from app import mongo,socketio,FrontendURL
 import datetime
 from app.routes import script_routes
 from bson import ObjectId
 from app.services.ScheduleService import schedule_script,load_existing_schedules,unschedule_script,DisableScript,exec_func
+from app.services.UniversalService import GetUserDetaials, GetInternalCCList,send_email_notification,GetAllApproversOrAdmin
+from app.services.EmailBody import FrameEmailBody
 
 
 def serialize_job(job):
@@ -106,6 +108,24 @@ def schedule():
             enabled=enabled,
 
         )
+        currentUser = GetUserDetaials(cuid)
+        approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        script_title=script_name,
+        script_author=currentUser["username"] if currentUser and currentUser.get("username") else data["uploadedBy"],
+        submission_date=str(datetime.datetime.now().date()),
+        script_description=data.get("description", ""),
+        action_required=True,
+        info_link=f"{FrontendURL}/adminRequests",
+        recipient_name="All Approvers",
+        )
+        send_email_notification(
+            receiverlist=[approveruser["email"] if approveruser and approveruser.get("email") else approveruser["cuid"] for approveruser in approverusers],
+            CCList=CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else data["uploadedBy"]),
+            subject=f"Script {script_name} scheduled for approval",
+            body=framedBody,
+        )
     except Exception as e:
         print(str(e),"/schedule")
         return jsonify({"error": str(e)}), 500
@@ -139,6 +159,7 @@ def unschedule(job_id):
     """
     success = unschedule_script(job_id)
     if success:
+        
         return jsonify({"message": f"Job {job_id} unscheduled"})
     else:
         return jsonify({"error": f"Failed to unschedule job {job_id}"}), 500

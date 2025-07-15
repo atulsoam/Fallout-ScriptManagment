@@ -14,6 +14,7 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
     Enhanced: Validates input, handles empty lists, logs status, and supports attachments.
     attachments: list of file paths or file-like objects (dict with 'filename' and 'content')
     """
+    print(f"send_email_notification called with subject: {subject}, receiverlist: {receiverlist}, CCList: {CCList}")
     sender_address = "ScriptMGMT@lumen.com"
     sender_Name = "ScriptManagement Team"
 
@@ -113,6 +114,20 @@ def GetUserDetaials(cuid):
         return user if user else None
     except Exception as e:
         print(f"Error retrieving user details for {cuid}: {e}")
+        return None
+
+def GetAllApproversOrAdmin(isApprover=False,isAdmin=False):
+    
+    try:
+        query = {}
+        if isApprover:
+            query["isApprover"] = True
+        if isAdmin:
+            query["isAdmin"] = True
+        user = mongo.db.ScriptManagmentUsers.find(query)
+        return user if user else None
+    except Exception as e:
+        print(f"Error retrieving user details : {e}")
         return None
 
 def GetInternalCCList():

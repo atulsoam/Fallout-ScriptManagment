@@ -1,11 +1,12 @@
 from flask import request, jsonify
 from werkzeug.security import generate_password_hash
 import datetime
-from app import mongo
+from app import mongo,FrontendURL
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
 from app.services.ScheduleService import schedule_script
-
+from app.services.UniversalService import GetUserDetaials, GetInternalCCList, send_email_notification, GetAllApproversOrAdmin
+from app.services.EmailBody import FrameEmailBody
 
 def update_admin_controls_list(field, cuid, action):
     update_query = {"$addToSet" if action == "add" else "$pull": {field: cuid}}
@@ -114,7 +115,24 @@ def create_user():
         mongo.db.ScriptManagmentUsers.insert_one(user)
         if isAdmin:
             update_admin_controls_list("adminList", cuid, "add")
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else username,
+        Information=f"""Your account has been created successfully. You can now log in with cred.
+        Cuid : {cuid}
+          password : {password}""",
 
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList=CCList,
+            subject=f"Your account has been created in Script Management",
+            body=framedBody,
+        )
         return jsonify({'message': 'User created successfully'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -139,6 +157,7 @@ def list_users():
     """
     try:
         users = list(mongo.db.ScriptManagmentUsers.find({}, {"_id": 0}))
+
         return jsonify(users), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -187,6 +206,23 @@ def add_approver():
 
         update_admin_controls_list("approverList", cuid, "add")
         mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isApprover": True}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        print("CC List:", CCList)
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been added as an approver in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been added as an approver in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Approver added successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -235,6 +271,22 @@ def add_admin():
 
         update_admin_controls_list("adminList", cuid, "add")
         mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isAdmin": True}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been added as an admin in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been added as an admin in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Admin added successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -283,6 +335,22 @@ def remove_approver():
 
         update_admin_controls_list("approverList", cuid, "remove")
         mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isApprover": False}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been removed as an approver in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been removed as an approver in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Approver removed successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -331,6 +399,22 @@ def remove_admin():
 
         update_admin_controls_list("adminList", cuid, "remove")
         mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isAdmin": False}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been removed as an admin in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been removed as an admin in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Admin removed successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -419,6 +503,22 @@ def delete_user():
         mongo.db.ScriptManagmentUsers.delete_one({"cuid": cuid})
         update_admin_controls_list("adminList", cuid, "remove")
         update_admin_controls_list("approverList", cuid, "remove")
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FrontendURL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else cuid,
+        Information="You have been deleted from Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been deleted from Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "User deleted successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -520,6 +620,26 @@ def approveSchedule_script(job_id):
                 metadata=job.get("metadata"),
                 enabled=True
             )
+            currentUser = GetUserDetaials(job["uploadedBy"])
+            approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+            CCList = GetInternalCCList()
+            finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["uploadedBy"])
+            framedBody = FrameEmailBody(
+            script_title=job["name"],
+            script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+            submission_date=str(datetime.datetime.now().date()),
+            action_required=False,
+            info_link=f"{FrontendURL}/SchedulerPage",
+            recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["uploadedBy"],
+            Information="Your script has been approved and scheduled.",
+        )
+                
+            send_email_notification(
+                    receiverlist= currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"],
+                    CCList= finalCClist,
+                    subject=f"Script {job['name']} approved and scheduled",
+                    body=framedBody,
+                )
         except Exception as e:
             return jsonify({"error": f"Approved but scheduling failed: {e}"}), 500
 
@@ -582,6 +702,27 @@ def rejectSchedule_script(job_id):
     try:
         from app import scheduler
         scheduler.remove_job(job_id)
+        currentUser = GetUserDetaials(job["uploadedBy"])
+        approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+        CCList = GetInternalCCList()
+        finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["uploadedBy"])
+        framedBody = FrameEmailBody(
+        script_title=job["name"],
+        script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+        
+        submission_date=str(job.get("createdAt", datetime.datetime.now().date())),
+        action_required=False,
+        info_link=f"{FrontendURL}/SchedulerPage",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["uploadedBy"],
+        Information= f"Your script has been rejected. Reason: {rejectReason}",
+    )
+            
+        send_email_notification(
+                receiverlist= currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"],
+                CCList=finalCClist,
+                subject=f"Script {job['name']} rejected",
+                body=framedBody,
+            )
     except Exception:
         pass  # In case it wasn't scheduled yet
 
