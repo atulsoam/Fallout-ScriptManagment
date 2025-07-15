@@ -1,6 +1,6 @@
-from flask import request, jsonify,session
+from flask import request, jsonify,session # type: ignore
 from app.routes import script_routes
-from app import mongo,FrontendURL
+from app import mongo,FRONTEND_URL,SCRIPTS_COLLECTION,FRONTEND_URL,CATEGORY_SUB_CATEGORY
 import datetime
 from bson import ObjectId
 from app.services.UniversalService import send_email_notification,GetUserDetaials,GetInternalCCList
@@ -87,7 +87,7 @@ def upload_script():
         "isEnabled": False
     }
 
-    all_scripts_col = mongo.db.AllScript
+    all_scripts_col = SCRIPTS_COLLECTION
 
     existing = all_scripts_col.find_one({"name": name})
     if existing:
@@ -110,8 +110,9 @@ def upload_script():
     submission_date=str(datetime.datetime.now().date()),
     script_description=data.get("description", ""),
     action_required=True,
-    info_link=f"{FrontendURL}/adminRequests",
+    info_link=f"{FRONTEND_URL}/adminRequests",
     recipient_name=approveruser["username"] if approveruser and approveruser.get("username") else data["approver"],
+    msg=f"""{currentUser.get("username","")} has uploaded a new script and wants your approval""",
 )
         
     send_email_notification(
@@ -165,7 +166,7 @@ def approve_script(script_id):
     if not approver:
         return jsonify({"error": "Approver is required"}), 400
 
-    all_scripts_col = mongo.db.AllScript
+    all_scripts_col = SCRIPTS_COLLECTION
     script = all_scripts_col.find_one({"_id": script_id})
 
     if not script:
@@ -187,9 +188,10 @@ def approve_script(script_id):
         submission_date=script["uploadedAt"],
         script_description=script.get("description", ""),
         action_required=False,
-        info_link=f"{FrontendURL}/upload",
+        info_link=f"{FRONTEND_URL}/upload",
         recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
         Information=f"""Your script '{script['name']}' has been Approved by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.""",
+        msg=f"""An action has been taken on your script: {script['name']}""",
     )
         
     send_email_notification(
@@ -248,7 +250,7 @@ def reject_script(script_id):
     if not approver or not reason:
         return jsonify({"error": "Approver and rejection reason are required"}), 400
 
-    all_scripts_col = mongo.db.AllScript
+    all_scripts_col = SCRIPTS_COLLECTION
     script = all_scripts_col.find_one({"_id": script_id})
 
     if not script:
@@ -277,11 +279,12 @@ def reject_script(script_id):
         submission_date=script["uploadedAt"],
         script_description=script.get("description", ""),
         action_required=False,
-        info_link=f"{FrontendURL}/upload",
+        info_link=f"{FRONTEND_URL}/upload",
         recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else script["uploadedBy"],
         Information=f"""Your script '{script['name']}' has been Rejected by {approveruser['username'] if approveruser and approveruser.get('username') else approver}.
         Reason for rejection: {reason}
         """,
+        msg=f"""An action has been taken on your script: {script['name']}""",
     )
         
     send_email_notification(
@@ -308,7 +311,7 @@ def get_scripts():
           items:
             type: object
     """
-    scripts = mongo.db.AllScript.find(
+    scripts = SCRIPTS_COLLECTION.find(
         {"isApproved": True, "isEnabled": True},  # Filter
         {
             "_id": 1,
@@ -367,7 +370,7 @@ def get_Allscripts():
           items:
             type: object
     """
-    scripts = mongo.db.AllScript.find(
+    scripts = SCRIPTS_COLLECTION.find(
         {},
         {
             "_id": 1,
@@ -467,7 +470,7 @@ def update_script(script_id):
     if not update_fields:
         return jsonify({"error": "No valid fields to update"}), 400
 
-    all_scripts_col = mongo.db.AllScript
+    all_scripts_col = SCRIPTS_COLLECTION
 
     # Optional: validate enable/disable only if approved
     if "isEnabled" in update_fields:
@@ -512,7 +515,7 @@ def delete_script(script_id):
       404:
         description: Script not found
     """
-    all_scripts_col = mongo.db.AllScript
+    all_scripts_col = SCRIPTS_COLLECTION
 
     result = all_scripts_col.delete_one({"_id": str(script_id)})
 
@@ -534,7 +537,7 @@ def scriptCatogeries():
         schema:
           type: object
     """
-    AllInfo = list(mongo.db.categorySubCategory.find())[0]
+    AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
     del AllInfo["_id"]
     return jsonify(AllInfo)
 
@@ -569,11 +572,11 @@ def AddScriptType():
     """
     data = request.json
     scriptType = data["scriptType"]
-    AllInfo = list(mongo.db.categorySubCategory.find())[0]
+    AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
     scriptTypes = AllInfo["scriptType"]
     if scriptType not in scriptTypes:
         scriptTypes.append(scriptType)
-        mongo.db.categorySubCategory.update_one({}, {"$set": {"scriptType": scriptTypes}})
+        CATEGORY_SUB_CATEGORY.update_one({}, {"$set": {"scriptType": scriptTypes}})
         return jsonify({"message": "Script type added successfully"}), 200
     else:
         return jsonify({"error": "Script type already exists"}), 400
@@ -609,11 +612,11 @@ def AddScriptSubType():
     """
     data = request.json
     scriptSubType = data["scriptSubType"]
-    AllInfo = list(mongo.db.categorySubCategory.find())[0]
+    AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
     scriptSubTypes = AllInfo["scriptSubType"]
     if scriptSubType not in scriptSubTypes:
         scriptSubTypes.append(scriptSubType)
-        mongo.db.categorySubCategory.update_one({}, {"$set": {"scriptSubType": scriptSubTypes}})
+        CATEGORY_SUB_CATEGORY.update_one({}, {"$set": {"scriptSubType": scriptSubTypes}})
         return jsonify({"message": "Script sub type added successfully"}), 200
     else:
         return jsonify({"error": "Script sub type already exists"}), 400

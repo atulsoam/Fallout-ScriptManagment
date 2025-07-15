@@ -1,15 +1,16 @@
 from flask import request, jsonify
 from werkzeug.security import generate_password_hash
 import datetime
-from app import mongo
+from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
 from app.services.ScheduleService import schedule_script
-
+from app.services.UniversalService import GetUserDetaials, GetInternalCCList, send_email_notification, GetAllApproversOrAdmin
+from app.services.EmailBody import FrameEmailBody
 
 def update_admin_controls_list(field, cuid, action):
     update_query = {"$addToSet" if action == "add" else "$pull": {field: cuid}}
-    mongo.db.AdminControlls.update_one({}, update_query, upsert=True)
+    ADMIN_CONTROLLS.update_one({}, update_query, upsert=True)
 
 @script_routes.route('/approvers', methods=['GET'])
 def get_approvers():
@@ -28,7 +29,7 @@ def get_approvers():
       404:
         description: No approver list found
     """
-    document = mongo.db.AdminControlls.find_one()
+    document = ADMIN_CONTROLLS.find_one()
     
     if document and 'approverList' in document:
         return jsonify(document['approverList']), 200
@@ -96,7 +97,7 @@ def create_user():
         if not cuid or not password:
             return jsonify({'error': 'CUID and password are required'}), 400
 
-        if mongo.db.ScriptManagmentUsers.find_one({'_id': cuid}):
+        if USERS_COLLECTION.find_one({'_id': cuid}):
             return jsonify({'error': 'User already exists'}), 409
 
         hashed_password = generate_password_hash(password)
@@ -111,10 +112,28 @@ def create_user():
             'createdBy': createdBy
         }
 
-        mongo.db.ScriptManagmentUsers.insert_one(user)
+        USERS_COLLECTION.insert_one(user)
         if isAdmin:
             update_admin_controls_list("adminList", cuid, "add")
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else username,
+        Information=f"""You can now log in with cred.
+        Cuid : {cuid}
+          password : {password}""",
+          msg = f"""{currentUser["username"]}, your account has been created successfully."""
 
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList=CCList,
+            subject=f"Your account has been created in Script Management",
+            body=framedBody,
+        )
         return jsonify({'message': 'User created successfully'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -138,7 +157,8 @@ def list_users():
         description: Server error
     """
     try:
-        users = list(mongo.db.ScriptManagmentUsers.find({}, {"_id": 0}))
+        users = list(USERS_COLLECTION.find({}, {"_id": 0}))
+
         return jsonify(users), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -181,12 +201,29 @@ def add_approver():
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
 
-        record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please enter a valid CUID"}), 404
 
         update_admin_controls_list("approverList", cuid, "add")
-        mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isApprover": True}})
+        USERS_COLLECTION.update_one({"cuid": cuid}, {"$set": {"isApprover": True}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        print("CC List:", CCList)
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been added as an approver in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been added as an approver in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Approver added successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -229,12 +266,28 @@ def add_admin():
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
 
-        record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please enter a valid CUID"}), 404
 
         update_admin_controls_list("adminList", cuid, "add")
-        mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isAdmin": True}})
+        USERS_COLLECTION.update_one({"cuid": cuid}, {"$set": {"isAdmin": True}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been added as an admin in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been added as an admin in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Admin added successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -277,12 +330,28 @@ def remove_approver():
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
 
-        record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please enter a valid CUID"}), 404
 
         update_admin_controls_list("approverList", cuid, "remove")
-        mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isApprover": False}})
+        USERS_COLLECTION.update_one({"cuid": cuid}, {"$set": {"isApprover": False}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been removed as an approver in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been removed as an approver in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Approver removed successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -325,12 +394,28 @@ def remove_admin():
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
 
-        record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please enter a valid CUID"}), 404
 
         update_admin_controls_list("adminList", cuid, "remove")
-        mongo.db.ScriptManagmentUsers.update_one({"cuid": cuid}, {"$set": {"isAdmin": False}})
+        USERS_COLLECTION.update_one({"cuid": cuid}, {"$set": {"isAdmin": False}})
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else record["username"],
+        Information="You have been removed as an admin in Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been removed as an admin in Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "Admin removed successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -369,11 +454,11 @@ def update_user(cuid):
     """
     try:
         updates = request.get_json()
-        record = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please use a valid CUID"}), 404
 
-        result = mongo.db.ScriptManagmentUsers.update_one({'cuid': cuid}, {'$set': updates})
+        result = USERS_COLLECTION.update_one({'cuid': cuid}, {'$set': updates})
         if result.modified_count:
             return jsonify({"message": "User updated"}), 200
         return jsonify({"message": "No changes"}), 200
@@ -416,9 +501,25 @@ def delete_user():
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
 
-        mongo.db.ScriptManagmentUsers.delete_one({"cuid": cuid})
+        USERS_COLLECTION.delete_one({"cuid": cuid})
         update_admin_controls_list("adminList", cuid, "remove")
         update_admin_controls_list("approverList", cuid, "remove")
+        currentUser = GetUserDetaials(cuid)
+        AdminUsers = GetAllApproversOrAdmin(isApprover=False,isAdmin=True)
+        CCList = GetInternalCCList()
+        framedBody = FrameEmailBody(
+        action_required=False,
+        info_link=f"{FRONTEND_URL}/login",
+        recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else cuid,
+        Information="You have been deleted from Script Management",
+        )
+        send_email_notification(
+            receiverlist=[currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"] ],
+            CCList=CCList,
+
+            subject=f"You have been deleted from Script Management",
+            body=framedBody,
+        )
         return jsonify({"message": "User deleted successfully"}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -458,7 +559,7 @@ def is_user_admin(cuid):
         description: Server error
     """
     try:
-        user = mongo.db.ScriptManagmentUsers.find_one({'cuid': cuid})
+        user = USERS_COLLECTION.find_one({'cuid': cuid})
         if not user:
             return jsonify({"error": "User not found"}), 404
 
@@ -500,11 +601,11 @@ def approveSchedule_script(job_id):
       500:
         description: Scheduling failed
     """
-    job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
-    mongo.db.ScheduledJobs.update_one(
+    SCHEDULES_COLLECTION.update_one(
         {"_id": job_id},
         {"$set": {"isApproved": True,"status":"Approved", "updatedAt": datetime.datetime.now()}}
     )
@@ -520,9 +621,30 @@ def approveSchedule_script(job_id):
                 metadata=job.get("metadata"),
                 enabled=True
             )
+            
         except Exception as e:
             return jsonify({"error": f"Approved but scheduling failed: {e}"}), 500
-
+    currentUser = GetUserDetaials(job["Cuid"])
+    # approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+    CCList = GetInternalCCList()
+    finalCClist = CCList.append(currentUser["email"] if currentUser and currentUser.get("email") else job["Cuid"])
+    framedBody = FrameEmailBody(
+    script_title=job["scriptName"],
+    script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+    submission_date=str(datetime.datetime.now().date()),
+    action_required=False,
+    info_link=f"{FRONTEND_URL}/SchedulerPage",
+    recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["Cuid"],
+    Information="Your script has been approved and scheduled.",
+    msg=f"""An action has been taken on your script: {job['scriptName']}""",
+)
+        
+    send_email_notification(
+            receiverlist= [currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList= finalCClist,
+            subject=f"Script {job['scriptName']} approved and scheduled",
+            body=framedBody,
+        )
     return jsonify({"message": f"Job {job_id} approved and scheduled"}), 200
 
 
@@ -564,11 +686,11 @@ def rejectSchedule_script(job_id):
     """
     updates = request.get_json()
     rejectReason = updates.get("rejectReason","Na")
-    job = mongo.db.ScheduledJobs.find_one({"_id": job_id})
+    job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
-    mongo.db.ScheduledJobs.update_one(
+    SCHEDULES_COLLECTION.update_one(
         {"_id": job_id},
         {"$set": {
             "isApproved": False,
@@ -582,9 +704,31 @@ def rejectSchedule_script(job_id):
     try:
         from app import scheduler
         scheduler.remove_job(job_id)
+        
     except Exception:
         pass  # In case it wasn't scheduled yet
+    currentUser = GetUserDetaials(job["Cuid"])
+    # approverusers = GetAllApproversOrAdmin(isApprover=True,isAdmin=False)
+    CCList = GetInternalCCList()
 
+    framedBody = FrameEmailBody(
+    script_title=job["scriptName"],
+    script_author=currentUser["username"] if currentUser and currentUser.get("username") else currentUser["cuid"],
+    
+    submission_date=str(job.get("createdAt", datetime.datetime.now().date())),
+    action_required=False,
+    info_link=f"{FRONTEND_URL}/SchedulerPage",
+    recipient_name=currentUser["username"] if currentUser and currentUser.get("username") else job["Cuid"],
+    Information= f"Your script has been rejected. Reason: {rejectReason}",
+    msg=f"""An action has been taken on your script: {job['scriptName']}""",
+)
+        
+    send_email_notification(
+            receiverlist= [currentUser["email"] if currentUser and currentUser.get("email") else currentUser["cuid"]],
+            CCList=CCList,
+            subject=f"Script {job['scriptName']} rejected",
+            body=framedBody,
+        )
     return jsonify({"message": f"Job {job_id} rejected and disabled"}), 200
 
 
@@ -610,7 +754,7 @@ def get_pending_approvals_from_all_scripts():
         description: Server error
     """
     try:
-        pending_scripts = list(mongo.db.AllScript.find(
+        pending_scripts = list(SCRIPTS_COLLECTION.find(
             {
                 "$and": [
                     {"isApproved": False},
@@ -645,7 +789,7 @@ def get_pending_approvals_from_scheduled_scripts():
         description: Server error
     """
     try:
-        pending_scheduled = list(mongo.db.ScheduledJobs.find(
+        pending_scheduled = list(SCHEDULES_COLLECTION.find(
             {
                 "$and": [
                     {"isApproved": False},
@@ -682,13 +826,13 @@ def get_pending_approvals_for_all():
     """
     try:
         # Get count of unapproved, pending ScheduledJobs
-        scheduled_count = mongo.db.ScheduledJobs.count_documents({
+        scheduled_count = SCHEDULES_COLLECTION.count_documents({
             "isApproved": False,
             "status": "Pending"
         })
 
         # Get count of unapproved, pending AllScript items
-        script_count = mongo.db.AllScript.count_documents({
+        script_count = SCRIPTS_COLLECTION.count_documents({
             "isApproved": False,
             "status": "Pending"
         })

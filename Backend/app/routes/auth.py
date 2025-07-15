@@ -1,7 +1,7 @@
 from flask import request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.routes import script_routes
-from app import mongo
+from app import mongo,USERS_COLLECTION
 
 @script_routes.route('/signup', methods=['POST'])
 def signup():
@@ -13,7 +13,7 @@ def signup():
     if not cuid or not password:
         return jsonify({'error': 'CUID and password are required'}), 400
 
-    existing_user = mongo.db.ScriptManagmentUsers.find_one({'_id': cuid})
+    existing_user = USERS_COLLECTION.find_one({'_id': cuid})
     if existing_user:
         return jsonify({'error': 'User already exists'}), 409
 
@@ -25,7 +25,7 @@ def signup():
         'isAdmin': isAdmin
     }
 
-    mongo.db.ScriptManagmentUsers.insert_one(user)
+    USERS_COLLECTION.insert_one(user)
     return jsonify({'message': 'User created successfully'}), 201
 
 
@@ -66,7 +66,7 @@ def login():
     cuid = data.get('cuid')
     password = data.get('password')
 
-    user = mongo.db.ScriptManagmentUsers.find_one({'_id': cuid})
+    user = USERS_COLLECTION.find_one({'_id': cuid})
     if not user or not check_password_hash(user['password'], password):
         return jsonify({'error': 'Invalid CUID or password'}), 401
 

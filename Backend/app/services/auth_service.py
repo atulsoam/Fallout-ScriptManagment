@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from app import mongo
+from app import mongo,ADMIN_CONTROLLS
 import logging
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -42,7 +42,7 @@ def require_roles_from_admin_controls(allowed_roles=["admin", "approver"]):
 
 
             # Fetch control lists from DB
-            controls = mongo.db.AdminControlls.find_one({})
+            controls = ADMIN_CONTROLLS.find_one({})
             if not controls:
                 return jsonify({"error": "AdminControlls not configured"}), 500
 

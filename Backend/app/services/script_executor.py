@@ -1,7 +1,7 @@
 import subprocess, tempfile, threading, os, traceback
 import datetime
 import sys
-from app import mongo,socketio 
+from app import mongo,socketio ,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION
 
 # In-memory tracking
 running_processes = {}
@@ -90,7 +90,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                     buffer.append(line_obj)
 
                     if len(buffer) >= batch_size:
-                        mongo.db.ScriptLogs.insert_one({
+                        LOGS_COLLECTION.insert_one({
                             "exec_id": exec_id,
                             "script_name": script_name,
                             "lines": buffer.copy(),
@@ -99,7 +99,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                         buffer.clear()
 
                 if buffer:
-                    mongo.db.ScriptLogs.insert_one({
+                    LOGS_COLLECTION.insert_one({
                         "exec_id": exec_id,
                         "script_name": script_name,
                         "lines": buffer,
@@ -131,7 +131,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
         except Exception as e:
             error_logs = traceback.format_exc().splitlines()
             for line in error_logs:
-                mongo.db.ScriptLogs.insert_one({
+                LOGS_COLLECTION.insert_one({
                     "exec_id": exec_id,
                     "script_name": script_name,
                     "line": line,
@@ -169,11 +169,11 @@ def stop_script(exec_id):
             print(f"Error terminating script {exec_id}: {e}")
         
         # Mark script as terminated
-        update_running_script_status(exec_id, script_name, "Terminated",mongo.db.RunningScript)
+        update_running_script_status(exec_id, script_name, "Terminated",SCRIPTS_EXECUTION_COLLECTION)
 
 
         # Log termination message as separate log entry
-        mongo.db.ScriptLogs.insert_one({
+        LOGS_COLLECTION.insert_one({
             "exec_id": exec_id,
             "script_name": script_name,
             "line": "[Script manually terminated]",

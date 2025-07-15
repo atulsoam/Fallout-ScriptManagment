@@ -1,13 +1,13 @@
-from app import mongo
+from app import mongo,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION,CATEGORY_SUB_CATEGORY
 import datetime
 from datetime import timedelta
 from collections import Counter, defaultdict
 
 # Collections
-all_script = mongo.db.AllScript
-running_script = mongo.db.RunningScript
-scheduled_job = mongo.db.ScheduledJobs 
-category_sub_category = mongo.db.categorySubCategory  
+all_script = SCRIPTS_COLLECTION
+running_script = SCRIPTS_EXECUTION_COLLECTION
+scheduled_job = SCHEDULES_COLLECTION 
+category_sub_category =   CATEGORY_SUB_CATEGORY
 
 
 def get_dashboard_counts(days=10, top_n=5):
