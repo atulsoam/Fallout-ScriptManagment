@@ -219,3 +219,22 @@ export const getEmailStats = async (setLoading) => {
 
 
 
+export const sendAdminEmail = async (data, setLoading) => {
+  if (setLoading) setLoading(true);
+
+  try {
+    const cuid = getCuidFromStorage();
+    const response = await axios.post(`${API_BASE}/admin/send-email`, data, {
+      headers: { 'X-Requested-By': cuid },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { error: 'Failed to send email' };
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+
+
+
