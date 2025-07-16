@@ -10,10 +10,10 @@ import classNames from 'classnames';
 import { FaMailBulk } from 'react-icons/fa';
 import EmailConfigManager from '../Components/EmailComponents/EmailConfigManager';
 
-const SkeletonCard = ({ height = 'h-36' }) => (
+const SkeletonCard = ({ height = "h-36" }) => (
   <div
     className={classNames(
-      'bg-white rounded-lg shadow animate-pulse p-4 flex items-center justify-center',
+      "bg-white rounded-lg shadow animate-pulse p-4 flex items-center justify-center",
       height
     )}
   >
@@ -41,11 +41,11 @@ const EmailDashboardPage = () => {
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
-    status: '',
-    receiver: '',
-    subject: '',
-    fromDate: '',
-    toDate: '',
+    status: "",
+    receiver: "",
+    subject: "",
+    fromDate: "",
+    toDate: "",
   });
   const [total, setTotal] = useState(0);
 
@@ -62,7 +62,7 @@ const EmailDashboardPage = () => {
       .catch(console.error);
   }, [filters]);
 
-  if (!stats || loading) {
+  if (!stats) {
     return (
       <div className="space-y-12 p-8 bg-gray-50 max-w-7xl mx-auto">
         <SectionDivider title="Loading Email Dashboard..." />
@@ -78,6 +78,9 @@ const EmailDashboardPage = () => {
         </div>
       </div>
     );
+  }
+  if (loading) {
+    return <LoadingOverlay />;
   }
 
   return (
@@ -116,9 +119,7 @@ const EmailDashboardPage = () => {
           }
         />
         <div className="mt-6">
-          {loading ? (
-            <LoadingOverlay />
-          ) : (
+          {!loading && (
             <>
               <EmailTable data={emails} />
               <PaginationControls

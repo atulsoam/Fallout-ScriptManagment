@@ -43,7 +43,7 @@ const EmailRowDetailsModal = ({ email, onClose }) => {
         </div>
 
         {/* Email Body */}
-        <div className="border rounded-md p-4 bg-gray-50 max-h-72 overflow-auto text-sm">
+        <div className="border rounded-md p-4 bg-gray-50 max-h-100 overflow-auto text-sm">
           <h4 className="font-semibold text-gray-800 mb-2">Email Body:</h4>
           <div
             className="prose prose-sm max-w-none text-gray-800"
