@@ -7,12 +7,14 @@ from email.utils import formataddr
 from app import mongo,USERS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
 from datetime import datetime
 import os
+import base64
+import mimetypes
+from email.mime.application import MIMEApplication
 
 def send_email_notification(receiverlist, CCList, subject, body, attachments=None):
     """
     Send an email notification (with optional attachments) and store the result in MongoDB.
-    Enhanced: Validates input, handles empty lists, logs status, and supports attachments.
-    attachments: list of file paths or file-like objects (dict with 'filename' and 'content')
+    Supports file paths or dicts like {'filename': str, 'content': bytes/base64 str}
     """
     print(f"send_email_notification called with subject: {subject}, receiverlist: {receiverlist}, CCList: {CCList}")
     sender_address = "ScriptMGMT@lumen.com"
@@ -39,22 +41,34 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
         message['Subject'] = subject
         message.attach(MIMEText(body, 'html'))
 
-        # Handle attachments
+    
+        attached_files = []
         if attachments:
             for att in attachments:
-                if isinstance(att, dict) and 'filename' in att and 'content' in att:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(att['content'])
-                    encoders.encode_base64(part)
-                    part.add_header('Content-Disposition', f'attachment; filename="{att["filename"]}"')
-                    message.attach(part)
-                elif isinstance(att, str) and os.path.isfile(att):
-                    with open(att, "rb") as f:
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(f.read())
+                try:
+                    filename = att.get('filename') if isinstance(att, dict) else os.path.basename(att)
+                    content = None
+
+                    if isinstance(att, dict) and 'content' in att:
+                        content = base64.b64decode(att['content']) if isinstance(att['content'], str) else att['content']
+                    elif isinstance(att, str) and os.path.isfile(att):
+                        with open(att, "rb") as f:
+                            content = f.read()
+
+                    if content:
+                        # Guess MIME type
+                        mimetype, _ = mimetypes.guess_type(filename)
+                        maintype, subtype = (mimetype.split('/', 1) if mimetype else ('application', 'octet-stream'))
+
+                        part = MIMEBase(maintype, subtype)
+                        part.set_payload(content)
                         encoders.encode_base64(part)
-                        part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(att)}"')
+                        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
                         message.attach(part)
+                        attached_files.append(filename)
+
+                except Exception as e:
+                    print(f"Failed to attach file: {filename}. Error: {e}")
 
         all_recipients = receiverlist + (CCList if CCList else [])
         session = smtplib.SMTP('mailgate.qintra.com', 25)
@@ -62,6 +76,7 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
         session.sendmail(sender_address, all_recipients, text)
         print(f"{subject} :: mailConfig :: sendMailRequest ==> Mail sent successfully..")
         session.quit()
+
         StoreEmailRecords({
             "Subject": subject,
             "ReceiverList": receiverlist,
@@ -69,8 +84,9 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
             "SenderAddress": sender_address,
             "EmailBody": body,
             "Status": "Sent",
-            "Attachments": [att['filename'] if isinstance(att, dict) else os.path.basename(att) for att in attachments] if attachments else []
+            "Attachments": attached_files
         })
+
     except Exception as e:
         print("Could not send email, error occurred")
         print("Error:", e)
@@ -81,13 +97,14 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
             "SenderAddress": sender_address,
             "EmailBody": f"""<html>
     <body>
-        <p>We got error while sending email subjected {subject}. The error we got is {str(e)}</p>
+        <p>We got error while sending email with subject '{subject}'. The error we got is: {str(e)}</p>
     </body>
     </html>""",
             "Status": "Failed",
             "Error": str(e),
-            "Attachments": [att['filename'] if isinstance(att, dict) else os.path.basename(att) for att in attachments] if attachments else []
+            "Attachments": attached_files
         })
+
 
 def StoreEmailRecords(record):
     """
