@@ -8,6 +8,8 @@ from app import mongo,USERS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
 from datetime import datetime
 import os
 import base64
+import mimetypes
+from email.mime.application import MIMEApplication
 
 def send_email_notification(receiverlist, CCList, subject, body, attachments=None):
     """
@@ -39,33 +41,34 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
         message['Subject'] = subject
         message.attach(MIMEText(body, 'html'))
 
-        # Attachments handling
+    
         attached_files = []
         if attachments:
             for att in attachments:
                 try:
-                    if isinstance(att, dict) and 'filename' in att and 'content' in att:
-                        content = att['content']
-                        if isinstance(content, str):
-                            content = base64.b64decode(content)
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(content)
-                        encoders.encode_base64(part)
-                        part.add_header('Content-Disposition', f'attachment; filename="{att["filename"]}"')
-                        message.attach(part)
-                        attached_files.append(att['filename'])
+                    filename = att.get('filename') if isinstance(att, dict) else os.path.basename(att)
+                    content = None
 
+                    if isinstance(att, dict) and 'content' in att:
+                        content = base64.b64decode(att['content']) if isinstance(att['content'], str) else att['content']
                     elif isinstance(att, str) and os.path.isfile(att):
                         with open(att, "rb") as f:
-                            part = MIMEBase('application', 'octet-stream')
-                            part.set_payload(f.read())
-                            encoders.encode_base64(part)
-                            part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(att)}"')
-                            message.attach(part)
-                            attached_files.append(os.path.basename(att))
+                            content = f.read()
+
+                    if content:
+                        # Guess MIME type
+                        mimetype, _ = mimetypes.guess_type(filename)
+                        maintype, subtype = (mimetype.split('/', 1) if mimetype else ('application', 'octet-stream'))
+
+                        part = MIMEBase(maintype, subtype)
+                        part.set_payload(content)
+                        encoders.encode_base64(part)
+                        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+                        message.attach(part)
+                        attached_files.append(filename)
 
                 except Exception as e:
-                    print(f"Failed to attach file: {att.get('filename') if isinstance(att, dict) else att}. Error: {e}")
+                    print(f"Failed to attach file: {filename}. Error: {e}")
 
         all_recipients = receiverlist + (CCList if CCList else [])
         session = smtplib.SMTP('mailgate.qintra.com', 25)
