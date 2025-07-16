@@ -21,6 +21,7 @@ const navItems = [
 const adminSubItems = [
   { to: '/admin', label: 'Admin Dashboard', icon: FaUserEdit },
   { to: '/adminRequests', label: 'Admin Requests', icon: FaClock },
+  { to: '/EmailHistory', label: 'Email History', icon: FaHistory },
 ];
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {

@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from werkzeug.security import generate_password_hash
 import datetime
-from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION
+from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,EMAIL_RECORD
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
 from app.services.ScheduleService import schedule_script
@@ -846,3 +846,92 @@ def get_pending_approvals_for_all():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+@script_routes.route('/admin/email-history', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_email_history():
+    """
+    Get paginated and filtered email history.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        default: 1
+      - name: limit
+        in: query
+        type: integer
+        default: 10
+      - name: status
+        in: query
+        type: string
+      - name: receiver
+        in: query
+        type: string
+      - name: subject
+        in: query
+        type: string
+      - name: fromDate
+        in: query
+        type: string
+        format: date-time
+      - name: toDate
+        in: query
+        type: string
+        format: date-time
+    responses:
+      200:
+        description: Paginated email records
+      500:
+        description: Server error
+    """
+    try:
+        # Pagination params
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        skip = (page - 1) * limit
+
+        # Filters
+        status = request.args.get('status')
+        receiver = request.args.get('receiver')
+        subject = request.args.get('subject')
+        from_date = request.args.get('fromDate')
+        to_date = request.args.get('toDate')
+
+        query = {}
+
+        if status:
+            query['Status'] = status
+        if receiver:
+            query['ReceiverList'] = {"$regex": receiver, "$options": "i"}
+        if subject:
+            query['Subject'] = {"$regex": subject, "$options": "i"}
+        if from_date or to_date:
+            query['createdAt'] = {}
+            if from_date:
+                query['createdAt']['$gte'] = datetime.datetime.fromisoformat(from_date)
+            if to_date:
+                query['createdAt']['$lte'] = datetime.datetime.fromisoformat(to_date)
+
+        total_count = EMAIL_RECORD.count_documents(query)
+        cursor = EMAIL_RECORD.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+
+        emails = []
+        for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            doc['createdAt'] = doc['createdAt'].isoformat() if isinstance(doc['createdAt'], datetime.datetime) else doc['createdAt']
+            emails.append(doc)
+
+        return jsonify({
+            "data": emails,
+            "page": page,
+            "limit": limit,
+            "total": total_count
+        }), 200
+
+    except Exception as e:
+        print(str(e))
+        return jsonify({"error": str(e)}), 500

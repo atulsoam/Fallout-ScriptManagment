@@ -171,3 +171,37 @@ export const getAllPendingRequest = async (setLoading) => {
   }
 };
 
+/**
+ * Fetch email history with optional filters and pagination.
+ * 
+ * @param {Object} params - Query params: page, limit, status, receiver, subject, fromDate, toDate
+ * @param {Function} [setLoading] - Optional loading state setter
+ * @returns {Promise<Object>} - Response data from backend
+ */
+export const getEmailHistory = async (params = {}, setLoading) => {
+  if (setLoading) setLoading(true);
+
+  try {
+    const cuid = getCuidFromStorage();
+
+    // Build query string
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
+
+    const url = `${API_BASE}/admin/email-history?${queryParams.toString()}`;
+
+    const response = await axios.get(url, {
+      headers: { 'X-Requested-By': cuid }
+    });
+
+    return response.data;
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+
