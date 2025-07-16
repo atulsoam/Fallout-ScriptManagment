@@ -3,6 +3,7 @@ import EmailTable from '../Components/EmailComponents/EmailTable';
 import FiltersBar from '../Components/EmailComponents/FiltersBar';
 import PaginationControls from '../Components/EmailComponents/PaginationControls';
 import { getEmailHistory } from '../services/AdminServices/Adminservices';
+import LoadingOverlay from '../Components/LoadingOverlay';
 
 const EmailHistoryPage = () => {
   const [emails, setEmails] = useState([]);
@@ -35,7 +36,7 @@ const EmailHistoryPage = () => {
       <h2 className="text-2xl font-semibold text-gray-800 mb-4">📬 Email History</h2>
       <FiltersBar filters={filters} onChange={onFilterChange} />
       {loading ? (
-        <p className="text-center text-gray-500 mt-6">Loading email records...</p>
+        <LoadingOverlay />
       ) : (
         <>
           <EmailTable data={emails} />
