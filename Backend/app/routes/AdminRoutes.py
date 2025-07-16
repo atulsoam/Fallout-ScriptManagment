@@ -968,3 +968,93 @@ def get_email_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+@script_routes.route('/admin/send-email', methods=['POST'])
+@require_roles_from_admin_controls(['admin'])  # Restrict to admins only
+def send_email_to_user():
+    """
+    Admin-triggered email sender
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            receiverList:
+              type: array
+              items:
+                type: string
+            ccList:
+              type: array
+              items:
+                type: string
+            recipientName:
+              type: string
+            subject:
+              type: string
+            msg:
+              type: string
+            infoLink:
+              type: string
+            information:
+              type: string
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  content:
+                    type: string
+    responses:
+      200:
+        description: Email sent
+      400:
+        description: Bad request
+      500:
+        description: Server error
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['receiverList', 'recipientName', 'subject', 'msg']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Optional fields
+        cc_list = data.get('ccList', [])
+        info_link = data.get('infoLink', '')
+        information = data.get('information', 'View Details')
+        attachments = data.get('attachments', [])
+
+        # Build email body
+        email_body = FrameEmailBody(
+            recipient_name=data['recipientName'],
+            msg=data['msg'],
+            info_link=info_link,
+            Information=information,
+            action_required=False
+        )
+
+        # Send the email
+        send_email_notification(
+            receiverlist=data['receiverList'],
+            CCList=cc_list,
+            subject=data['subject'],
+            body=email_body,
+            attachments=attachments
+        )
+
+        return jsonify({"message": "Email sent successfully"}), 200
+
+    except Exception as e:
+        print("Error in /admin/send-email:", e)
+        return jsonify({"error": str(e)}), 500

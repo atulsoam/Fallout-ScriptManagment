@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   FaBars, FaHome, FaSignOutAlt, FaHistory,
-  FaUpload, FaPlay, FaClock, FaUserEdit, FaChevronDown
+  FaUpload, FaPlay, FaClock, FaUserEdit, FaChevronDown,
 } from 'react-icons/fa';
+import { HiOutlineMail } from 'react-icons/hi'; // Heroicons — clean and popular in Tailwind-based UI
+
 import { NavLink, useNavigate } from 'react-router-dom';
 import colors from '../utils/Colors';
 import { logout } from '../services/auth/authServices';
@@ -21,7 +23,7 @@ const navItems = [
 const adminSubItems = [
   { to: '/admin', label: 'Admin Dashboard', icon: FaUserEdit },
   { to: '/adminRequests', label: 'Admin Requests', icon: FaClock },
-  { to: '/EmailHistory', label: 'Email History', icon: FaHistory },
+  { to: '/EmailHistory', label: 'Email Dashboard', icon: HiOutlineMail },
 ];
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
