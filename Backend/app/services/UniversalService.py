@@ -105,6 +105,7 @@ def send_email_notification(receiverlist, CCList, subject, body, attachments=Non
             "Attachments": attached_files
         })
 
+
 def StoreEmailRecords(record):
     """
     Store email record in the EmailRecords collection.
