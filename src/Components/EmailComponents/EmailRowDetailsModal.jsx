@@ -24,7 +24,7 @@ const EmailRowDetailsModal = ({ email, onClose }) => {
           <div>
             <p><span className="font-medium">From:</span> {email.SenderAddress}</p>
             <p><span className="font-medium">To:</span> {email.ReceiverList.join(', ')}</p>
-            <p><span className="font-medium">CC:</span> {email.CCList.length > 0 ? email.CCList.join(', ') : 'None'}</p>
+            <p><span className="font-medium">CC:</span> {email?.CCList?.length > 0 ? email.CCList.join(', ') : 'None'}</p>
           </div>
           <div>
             <p>
