@@ -935,3 +935,36 @@ def get_email_history():
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)}), 500
+
+@script_routes.route('/admin/email-stats', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_email_stats():
+    """
+    Get summarized stats for email delivery (success/failure).
+    """
+    try:
+        total_sent = EMAIL_RECORD.count_documents({"Status": "Sent"})
+        total_failed = EMAIL_RECORD.count_documents({"Status": "Failed"})
+        total_pending = EMAIL_RECORD.count_documents({"Status": "Pending"})
+        total_all = EMAIL_RECORD.count_documents({})
+
+        latest_emails = list(
+                EMAIL_RECORD.find(
+                    {},  # query
+                    {"Subject": 1, "Status": 1, "createdAt": 1}
+                )
+                .sort("createdAt", -1)
+                .limit(5)
+            )
+
+
+        return jsonify({
+            "total": total_all,
+            "sent": total_sent,
+            "failed": total_failed,
+            "pending": total_pending,
+            "latest": latest_emails
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+

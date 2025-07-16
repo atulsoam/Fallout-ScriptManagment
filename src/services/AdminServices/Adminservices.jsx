@@ -204,4 +204,18 @@ export const getEmailHistory = async (params = {}, setLoading) => {
   }
 };
 
+export const getEmailStats = async (setLoading) => {
+  if (setLoading) setLoading(true);
+  try {
+    const cuid = getCuidFromStorage();
+    const response = await axios.get(`${API_BASE}/admin/email-stats`, {
+      headers: { 'X-Requested-By': cuid },
+    });
+    return response.data;
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+
 

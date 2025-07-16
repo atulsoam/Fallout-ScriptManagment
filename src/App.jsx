@@ -17,7 +17,7 @@ import { checkIfAdmin } from './services/auth/authServices';
 import PendingApprovals from './Pages/PendingApprovals';
 import Footer from '../src/Components/UI/Footer';
 import EditorLayout from './Pages/CoderEditor';
-import EmailHistoryPage from './Pages/EmailHistoryPage';
+import EmailDashboardPage from './Pages/EmailHistoryPage';
 
 
 function App() {
@@ -100,7 +100,7 @@ function App() {
             <Route path="/Code" element={<EditorLayout />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/adminRequests" element={<PendingApprovals />} />
-            <Route path="/EmailHistory" element={<EmailHistoryPage />} />
+            <Route path="/EmailHistory" element={<EmailDashboardPage />} />
             <Route path="/logout" element={<Logout />} />
           </Routes>
         </main>
