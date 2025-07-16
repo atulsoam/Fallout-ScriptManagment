@@ -146,14 +146,16 @@ def GetAllApproversOrAdmin(isApprover=False,isAdmin=False):
 
 def GetInternalCCList():
     """
-    Retrieve common CC list from the CommonCCList collection.
-    
+    Retrieve internal CC list from the CommonCCList collection.
+
     Returns:
         list: List of email addresses to be used in CC.
     """
     try:
-        cc_list = EMAIL_CONFIG.find_one({"_id": "InternalCCList"})
-        return cc_list["emails"] if cc_list and "emails" in cc_list else []
+        cc_list = EMAIL_CONFIG.find_one()
+        if cc_list and "configs" in cc_list and "InternalCCList" in cc_list["configs"]:
+            return cc_list["configs"]["InternalCCList"]
+        return []
     except Exception as e:
-        print(f"Error retrieving common CC list: {e}")
+        print(f"Error retrieving internal CC list: {e}")
         return []

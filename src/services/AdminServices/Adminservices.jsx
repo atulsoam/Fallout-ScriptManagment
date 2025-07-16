@@ -235,6 +235,40 @@ export const sendAdminEmail = async (data, setLoading) => {
   }
 };
 
+// Get all email configs (lists and members)
+export const getEmailConfigs = async (setLoading) => {
+  if (setLoading) setLoading(true);
+
+  try {
+    const cuid = getCuidFromStorage();
+    const response = await axios.get(`${API_BASE}/admin/email-configs`, {
+      headers: { 'X-Requested-By': cuid },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { error: 'Failed to fetch email configurations' };
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+// Save updated configs to server (overwrite all lists/emails)
+export const updateEmailConfigs = async (configs, setLoading) => {
+  if (setLoading) setLoading(true);
+
+  try {
+    const cuid = getCuidFromStorage();
+    const response = await axios.post(`${API_BASE}/admin/email-configs`, configs, {
+      headers: { 'X-Requested-By': cuid },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { error: 'Failed to update email configurations' };
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
 
 
 
