@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from werkzeug.security import generate_password_hash
 import datetime
-from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,EMAIL_RECORD
+from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
 from app.services.ScheduleService import schedule_script
@@ -1057,4 +1057,39 @@ def send_email_to_user():
 
     except Exception as e:
         print("Error in /admin/send-email:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+
+@script_routes.route('/admin/email-configs', methods=['GET'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def get_email_configs():
+    try:
+        config_doc = EMAIL_CONFIG.find_one()
+        if not config_doc:
+            # Initialize default config if not found
+            EMAIL_CONFIG.insert_one({ "configs": {} })
+            return jsonify({}), 200
+
+        return jsonify(config_doc.get("configs", {})), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@script_routes.route('/admin/email-configs', methods=['POST'])
+@require_roles_from_admin_controls(['admin', 'approver'])
+def update_email_configs():
+    """
+    Overwrites the entire config document with new data.
+    Expects JSON body: { "internalTeam": ["user1@example.com", ...], ... }
+    """
+    try:
+        new_configs = request.json
+        if not isinstance(new_configs, dict):
+            return jsonify({"error": "Invalid format. Expected a dictionary of lists."}), 400
+
+        EMAIL_CONFIG.update_one({}, { "$set": { "configs": new_configs } }, upsert=True)
+        return jsonify({ "message": "Configurations updated successfully." }), 200
+
+    except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -1,16 +1,14 @@
-import React, { useEffect, useState } from "react";
-import StatsCards from "../Components/EmailComponents/StatsCards";
-import EmailStatusChart from "../Components/EmailComponents/EmailStatusChart";
-import FiltersBar from "../Components/EmailComponents/FiltersBar";
-import EmailTable from "../Components/EmailComponents/EmailTable";
-import PaginationControls from "../Components/EmailComponents/PaginationControls";
-import LoadingOverlay from "../Components/LoadingOverlay";
-import {
-  getEmailStats,
-  getEmailHistory,
-} from "../services/AdminServices/Adminservices";
-import classNames from "classnames";
-import { FaMailBulk } from "react-icons/fa";
+import React, { useEffect, useState } from 'react';
+import StatsCards from '../Components/EmailComponents/StatsCards';
+import EmailStatusChart from '../Components/EmailComponents/EmailStatusChart';
+import FiltersBar from '../Components/EmailComponents/FiltersBar';
+import EmailTable from '../Components/EmailComponents/EmailTable';
+import PaginationControls from '../Components/EmailComponents/PaginationControls';
+import LoadingOverlay from '../Components/LoadingOverlay';
+import { getEmailStats, getEmailHistory } from '../services/AdminServices/Adminservices';
+import classNames from 'classnames';
+import { FaMailBulk } from 'react-icons/fa';
+import EmailConfigManager from '../Components/EmailComponents/EmailConfigManager';
 
 const SkeletonCard = ({ height = "h-36" }) => (
   <div
@@ -105,6 +103,8 @@ const EmailDashboardPage = () => {
           <EmailStatusChart stats={stats} />
         </div>
       </section>
+      <SectionDivider title="Email Configuration" />
+      <EmailConfigManager />
 
       <SectionDivider title="Email History" />
       <section className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-6xl mx-auto mt-8 relative z-10">
