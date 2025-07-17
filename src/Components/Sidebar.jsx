@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FaBars, FaHome, FaSignOutAlt, FaHistory,
-  FaUpload, FaPlay, FaClock, FaUserEdit, FaChevronDown,
+  FaBars, FaSignOutAlt, FaChevronDown, FaTerminal
 } from 'react-icons/fa';
-import { HiOutlineMail } from 'react-icons/hi'; // Heroicons — clean and popular in Tailwind-based UI
+import {
+  MdSpaceDashboard, MdHistory, MdCloudUpload, MdSchedule, MdLogout, MdAdminPanelSettings, MdSend
+} from 'react-icons/md';
+import {
+  HiOutlineInboxArrowDown
+} from 'react-icons/hi2';
+import { HiOutlineMail, HiOutlineTerminal } from 'react-icons/hi'; // For backwards compatibility
 
+// Dashboard icon
 import { NavLink, useNavigate } from 'react-router-dom';
 import colors from '../utils/Colors';
 import { logout } from '../services/auth/authServices';
@@ -12,19 +18,22 @@ import logo from "../assets/lumen-logo.png";
 import { getAllPendingRequest } from '../services/AdminServices/Adminservices';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: FaHome },
-  { to: '/history', label: 'History', icon: FaHistory },
-  { to: '/upload', label: 'Upload', icon: FaUpload },
-  { to: '/scriptRunner', label: 'Run Script', icon: FaPlay },
-  { to: '/SchedulerPage', label: 'Scheduler', icon: FaClock },
-  { to: '/logout', label: 'Logout', icon: FaSignOutAlt },
+  { to: '/', label: 'Dashboard', icon: MdSpaceDashboard },
+  { to: '/scriptRunner', label: 'Run Script', icon: HiOutlineTerminal },
+  { to: '/history', label: 'History', icon: MdHistory },
+  { to: '/SchedulerPage', label: 'Scheduler', icon: MdSchedule },
+  { to: '/upload', label: 'Upload', icon: MdCloudUpload },
+  { to: '/logout', label: 'Logout', icon: MdLogout },
 ];
 
+
 const adminSubItems = [
-  { to: '/admin', label: 'Admin Dashboard', icon: FaUserEdit },
-  { to: '/adminRequests', label: 'Admin Requests', icon: FaClock },
+  { to: '/admin', label: 'Admin Dashboard', icon: MdSpaceDashboard },
+  { to: '/adminRequests', label: 'Admin Requests', icon: HiOutlineInboxArrowDown },
   { to: '/EmailHistory', label: 'Email Dashboard', icon: HiOutlineMail },
+  { to: '/SendEmail', label: 'Send Email', icon: MdSend },
 ];
+
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [pendingCount, setPendingCount] = useState(0);
@@ -159,7 +168,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   aria-expanded={isAdminOpen}
                 >
                   <div className="flex items-center gap-4">
-                    <FaUserEdit className="min-w-[20px]" size={20} />
+                    <MdAdminPanelSettings className="min-w-[20px]" size={20} />
                     {isOpen && <span className="whitespace-nowrap">Admin</span>}
                   </div>
                   {isOpen && (
