@@ -1,11 +1,11 @@
 from apscheduler.triggers.cron import CronTrigger
 import datetime
 from functools import wraps
-from app import mongo, scheduler,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION
+from app import mongo, scheduler
 from app.services.script_executor import run_script as executeScript
 from bson import ObjectId
 from config import Config
-
+from app.db_manager import get_collection
 def track_job_run(exec_func):
     @wraps(exec_func)
     def wrapper(script_name, job_id, *args, **kwargs):
@@ -19,6 +19,7 @@ def track_job_run(exec_func):
             result = None
         end = datetime.datetime.now()
         duration = (end - start).total_seconds()
+        SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
         job_doc = SCHEDULES_COLLECTION.find_one({"_id": job_id})
         if job_doc:
             run_count = job_doc.get("runCount", 0) + 1
@@ -45,6 +46,9 @@ def track_job_run(exec_func):
     return wrapper
 
 def exec_func(script_name, job_id):
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
+    SCRIPTS_EXECUTION_COLLECTION = get_collection("SCRIPTS_EXECUTION_COLLECTION")
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
     script_doc = SCRIPTS_COLLECTION.find_one({"name": script_name})
     if not script_doc:
         print(f"Error: Script {script_name} not found in DB.")
@@ -107,6 +111,7 @@ def schedule_script(
     # Wrap exec_func with tracking decorator
     tracked_func = track_job_run(exec_func)
 
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
     # Determine approval status (default to False for new entries)
     existing_job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     is_approved = existing_job.get("isApproved", False) if existing_job else False
@@ -151,6 +156,8 @@ def schedule_script(
 def DisableScript(job_id, enable):
     print(job_id, enable)
     try:
+
+        SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
         if not enable:
             scheduler.remove_job(job_id)
             SCHEDULES_COLLECTION.update_one(
@@ -192,6 +199,7 @@ def DisableScript(job_id, enable):
 def unschedule_script(job_id):
     try:
         scheduler.remove_job(job_id)
+        SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
         SCHEDULES_COLLECTION.delete_one({"_id": job_id})
         return True
     except Exception as e:

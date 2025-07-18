@@ -1,10 +1,11 @@
 from flask import request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.routes import script_routes
-from app import mongo,USERS_COLLECTION
-
+from app import mongo
+from app.db_manager import get_collection
 @script_routes.route('/signup', methods=['POST'])
 def signup():
+    USERS_COLLECTION = get_collection("USERS_COLLECTION")
     data = request.get_json()
     cuid = data.get('cuid')
     password = data.get('password')
@@ -65,7 +66,7 @@ def login():
     data = request.get_json()
     cuid = data.get('cuid')
     password = data.get('password')
-
+    USERS_COLLECTION = get_collection("USERS_COLLECTION")
     user = USERS_COLLECTION.find_one({'_id': cuid})
     if not user or not check_password_hash(user['password'], password):
         return jsonify({'error': 'Invalid CUID or password'}), 401

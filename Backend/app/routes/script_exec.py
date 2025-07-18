@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION
+from app import mongo,socketio
 from app.services.script_executor import run_script as executeScript,stop_script,get_running_scripts
 import datetime
 from app.routes import script_routes
 from bson import ObjectId
+from app.db_manager import get_collection
 
 @script_routes.route('/run-script', methods=['POST'])
 def run_script():
@@ -43,7 +44,8 @@ def run_script():
     data = request.json
     script_name = data.get("scriptName")
     loggedInUser = data.get("Cuid", "System")
-
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
+    SCRIPTS_EXECUTION_COLLECTION = get_collection("SCRIPTS_EXECUTION_COLLECTION")
     if not script_name:
         return jsonify({"error": "Missing scriptName"}), 400
 
@@ -161,6 +163,7 @@ def FetchLogs():
       400:
         description: Missing execId
     """
+    LOGS_COLLECTION = get_collection("LOGS_COLLECTION")
     exec_id = request.json.get("execId")
     if not exec_id:
         return jsonify({"error": "Missing execId"}), 400
@@ -239,7 +242,8 @@ def run_code():
     data = request.json
     script_name = data.get("name")
     loggedInUser = data.get("Cuid", "System")
-
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
+    SCRIPTS_EXECUTION_COLLECTION = get_collection("SCRIPTS_EXECUTION_COLLECTION")
     if not script_name:
         return jsonify({"error": "Missing scriptName"}), 400
 

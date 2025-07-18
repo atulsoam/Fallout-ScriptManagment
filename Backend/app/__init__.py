@@ -1,59 +1,50 @@
+# app/__init__.py
+
 from flask import Flask
-from flask_pymongo import PyMongo # type: ignore
-from flask_cors import CORS # type: ignore
+from flask_pymongo import PyMongo
+from flask_cors import CORS
 from flask_socketio import SocketIO
-from apscheduler.schedulers.background import BackgroundScheduler # type: ignore
+from apscheduler.schedulers.background import BackgroundScheduler
 from config import Config
 
-socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
 mongo = PyMongo()
+socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
 scheduler = BackgroundScheduler()
-
-ANALYTICS_DB = None
-SCRIPT_DB = None
-
-USERS_COLLECTION = None
-LOGS_COLLECTION = None
-SCRIPTS_COLLECTION = None
-SCHEDULES_COLLECTION = None
-SCRIPTS_EXECUTION_COLLECTION = None
-ADMIN_CONTROLLS = None
-CATEGORY_SUB_CATEGORY = None
-EMAIL_RECORD = None
-EMAIL_CONFIG = None
-FRONTEND_URL = None
-
+FRONTEND_URL = "http://localhost:5173/"
 
 def create_app():
-    global ANALYTICS_DB, SCRIPT_DB
-    global USERS_COLLECTION, LOGS_COLLECTION, SCRIPTS_COLLECTION, SCHEDULES_COLLECTION,SCRIPTS_EXECUTION_COLLECTION, ADMIN_CONTROLLS, CATEGORY_SUB_CATEGORY, EMAIL_RECORD, EMAIL_CONFIG, FRONTEND_URL
-
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # Enable CORS and initialize extensions
     CORS(app, supports_credentials=True)
     mongo.init_app(app)
-
-    # Get both databases
-    ANALYTICS_DB = mongo.cx[Config.ANALYTICS_DB]
-    SCRIPT_DB = mongo.cx[Config.SCRIPT_DB]
-
-    USERS_COLLECTION = SCRIPT_DB[Config.USERS_COLLECTION]
-    LOGS_COLLECTION = SCRIPT_DB[Config.LOGS_COLLECTION]
-    SCRIPTS_COLLECTION = SCRIPT_DB[Config.SCRIPTS_COLLECTION]
-    SCHEDULES_COLLECTION = SCRIPT_DB[Config.SCHEDULES_COLLECTION]
-    SCRIPTS_EXECUTION_COLLECTION = SCRIPT_DB[Config.SCRIPTS_EXECUTION_COLLECTION]
-    ADMIN_CONTROLLS = SCRIPT_DB[Config.ADMIN_CONTROLLS]
-    CATEGORY_SUB_CATEGORY = SCRIPT_DB[Config.CATEGORY_SUB_CATEGORY]
-    EMAIL_RECORD = SCRIPT_DB[Config.EMAIL_RECORD]
-    EMAIL_CONFIG = SCRIPT_DB[Config.EMAIL_CONFIG]
-    FRONTEND_URL = Config.FRONTEND_URL
-        
-
     socketio.init_app(app)
     scheduler.start()
 
-    from app.routes import script_routes, auth, ScriptUploader, script_exec, ScriptScheduler, ScriptDashBoard, AdminRoutes
+    # --- Database Initialization ---
+    analytics_db = mongo.cx[Config.ANALYTICS_DB]
+    script_db = mongo.cx[Config.SCRIPT_DB]
+
+    # --- Collections Setup (under SCRIPT_DB) ---
+    app.config["ANALYTICS_DB"] = analytics_db
+    app.config["SCRIPT_DB"] = script_db
+
+    app.config["USERS_COLLECTION"] = script_db[Config.USERS_COLLECTION]
+    app.config["LOGS_COLLECTION"] = script_db[Config.LOGS_COLLECTION]
+    app.config["SCRIPTS_COLLECTION"] = script_db[Config.SCRIPTS_COLLECTION]
+    app.config["SCHEDULES_COLLECTION"] = script_db[Config.SCHEDULES_COLLECTION]
+    app.config["SCRIPTS_EXECUTION_COLLECTION"] = script_db[Config.SCRIPTS_EXECUTION_COLLECTION]
+    app.config["ADMIN_CONTROLLS"] = script_db[Config.ADMIN_CONTROLLS]
+    app.config["CATEGORY_SUB_CATEGORY"] = script_db[Config.CATEGORY_SUB_CATEGORY]
+    app.config["EMAIL_RECORD"] = script_db[Config.EMAIL_RECORD]
+    app.config["EMAIL_CONFIG"] = script_db[Config.EMAIL_CONFIG]
+    app.config["CATEGORY_SUB_CATEGORY_COLLECTION"] = script_db[Config.CATEGORY_SUB_CATEGORY]
+
+    app.config["FRONTEND_URL"] = Config.FRONTEND_URL
+
+    # --- Register Blueprints ---
+    from app.routes import script_routes,    auth, ScriptUploader, script_exec, ScriptScheduler, ScriptDashBoard, AdminRoutes
     app.register_blueprint(script_routes)
 
     return app

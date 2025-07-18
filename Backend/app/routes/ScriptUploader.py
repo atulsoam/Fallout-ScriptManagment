@@ -1,12 +1,12 @@
 from flask import request, jsonify,session # type: ignore
 from app.routes import script_routes
-from app import mongo,FRONTEND_URL,SCRIPTS_COLLECTION,FRONTEND_URL,CATEGORY_SUB_CATEGORY
+from app import mongo,FRONTEND_URL
 import datetime
 from bson import ObjectId
 from app.services.UniversalService import send_email_notification,GetUserDetaials,GetInternalCCList
 from app.services.EmailBody import FrameEmailBody
 from app.services.auth_service import require_roles_from_admin_controls
-
+from app.db_manager import get_collection
 @script_routes.route('/upload', methods=['POST'])
 def upload_script():
     """
@@ -87,7 +87,8 @@ def upload_script():
         "isEnabled": False
     }
 
-    all_scripts_col = SCRIPTS_COLLECTION
+
+    all_scripts_col = get_collection("SCRIPTS_COLLECTION")
 
     existing = all_scripts_col.find_one({"name": name})
     if existing:
@@ -166,7 +167,7 @@ def approve_script(script_id):
     if not approver:
         return jsonify({"error": "Approver is required"}), 400
 
-    all_scripts_col = SCRIPTS_COLLECTION
+    all_scripts_col = get_collection("SCRIPTS_COLLECTION")
     script = all_scripts_col.find_one({"_id": script_id})
 
     if not script:
@@ -250,7 +251,7 @@ def reject_script(script_id):
     if not approver or not reason:
         return jsonify({"error": "Approver and rejection reason are required"}), 400
 
-    all_scripts_col = SCRIPTS_COLLECTION
+    all_scripts_col = get_collection("SCRIPTS_COLLECTION")
     script = all_scripts_col.find_one({"_id": script_id})
 
     if not script:
@@ -311,6 +312,7 @@ def get_scripts():
           items:
             type: object
     """
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
     scripts = SCRIPTS_COLLECTION.find(
         {"isApproved": True, "isEnabled": True},  # Filter
         {
@@ -370,6 +372,7 @@ def get_Allscripts():
           items:
             type: object
     """
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
     scripts = SCRIPTS_COLLECTION.find(
         {},
         {
@@ -470,7 +473,7 @@ def update_script(script_id):
     if not update_fields:
         return jsonify({"error": "No valid fields to update"}), 400
 
-    all_scripts_col = SCRIPTS_COLLECTION
+    all_scripts_col = get_collection("SCRIPTS_COLLECTION")
 
     # Optional: validate enable/disable only if approved
     if "isEnabled" in update_fields:
@@ -515,7 +518,7 @@ def delete_script(script_id):
       404:
         description: Script not found
     """
-    all_scripts_col = SCRIPTS_COLLECTION
+    all_scripts_col = get_collection("SCRIPTS_COLLECTION")
 
     result = all_scripts_col.delete_one({"_id": str(script_id)})
 
@@ -537,6 +540,7 @@ def scriptCatogeries():
         schema:
           type: object
     """
+    CATEGORY_SUB_CATEGORY = get_collection("CATEGORY_SUB_CATEGORY")
     AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
     del AllInfo["_id"]
     return jsonify(AllInfo)
@@ -572,6 +576,8 @@ def AddScriptType():
     """
     data = request.json
     scriptType = data["scriptType"]
+    CATEGORY_SUB_CATEGORY = get_collection("CATEGORY_SUB_CATEGORY")
+
     AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
     scriptTypes = AllInfo["scriptType"]
     if scriptType not in scriptTypes:
@@ -610,6 +616,7 @@ def AddScriptSubType():
       400:
         description: Script sub type already exists
     """
+    CATEGORY_SUB_CATEGORY = get_collection("CATEGORY_SUB_CATEGORY")
     data = request.json
     scriptSubType = data["scriptSubType"]
     AllInfo = list(CATEGORY_SUB_CATEGORY.find())[0]
