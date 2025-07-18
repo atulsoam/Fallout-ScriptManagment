@@ -1,14 +1,16 @@
-from flask import request, jsonify
+from flask import request, jsonify,current_app
 from werkzeug.security import generate_password_hash
 import datetime
-from app import mongo,FRONTEND_URL,USERS_COLLECTION, ADMIN_CONTROLLS,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
+from app import mongo,FRONTEND_URL
 from app.services.auth_service import require_roles_from_admin_controls
 from app.routes import script_routes
 from app.services.ScheduleService import schedule_script
 from app.services.UniversalService import GetUserDetaials, GetInternalCCList, send_email_notification, GetAllApproversOrAdmin
 from app.services.EmailBody import FrameEmailBody
+from app.db_manager import get_collection, get_analytics_db
 
 def update_admin_controls_list(field, cuid, action):
+    ADMIN_CONTROLLS = get_collection("ADMIN_CONTROLLS")
     update_query = {"$addToSet" if action == "add" else "$pull": {field: cuid}}
     ADMIN_CONTROLLS.update_one({}, update_query, upsert=True)
 
@@ -29,6 +31,7 @@ def get_approvers():
       404:
         description: No approver list found
     """
+    ADMIN_CONTROLLS = get_collection("ADMIN_CONTROLLS")
     document = ADMIN_CONTROLLS.find_one()
     
     if document and 'approverList' in document:
@@ -93,7 +96,7 @@ def create_user():
         email = data.get('email')
         username = data.get('username')
         createdBy = data.get('createdBy')
-
+        USERS_COLLECTION = get_collection("USERS_COLLECTION")
         if not cuid or not password:
             return jsonify({'error': 'CUID and password are required'}), 400
 
@@ -157,6 +160,7 @@ def list_users():
         description: Server error
     """
     try:
+        USERS_COLLECTION = get_collection("USERS_COLLECTION")
         users = list(USERS_COLLECTION.find({}, {"_id": 0}))
 
         return jsonify(users), 200
@@ -200,7 +204,7 @@ def add_approver():
         cuid = request.get_json().get("cuid")
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
-
+        USERS_COLLECTION = get_collection("USERS_COLLECTION")
         record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
             return jsonify({"error": "Please enter a valid CUID"}), 404
@@ -262,6 +266,7 @@ def add_admin():
         description: Server error
     """
     try:
+        USERS_COLLECTION = get_collection("USERS_COLLECTION")
         cuid = request.get_json().get("cuid")
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
@@ -326,6 +331,7 @@ def remove_approver():
         description: Server error
     """
     try:
+        USERS_COLLECTION  = get_collection("USERS_COLLECTION")
         cuid = request.get_json().get("cuid")
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
@@ -390,6 +396,7 @@ def remove_admin():
         description: Server error
     """
     try:
+        USERS_COLLECTION  = get_collection("USERS_COLLECTION")
         cuid = request.get_json().get("cuid")
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
@@ -453,6 +460,8 @@ def update_user(cuid):
         description: Server error
     """
     try:
+        USERS_COLLECTION  = get_collection("USERS_COLLECTION")
+
         updates = request.get_json()
         record = USERS_COLLECTION.find_one({'cuid': cuid})
         if not record:
@@ -497,6 +506,7 @@ def delete_user():
         description: Server error
     """
     try:
+        USERS_COLLECTION  = get_collection("USERS_COLLECTION")
         cuid = request.get_json().get("cuid")
         if not cuid:
             return jsonify({"error": "Missing cuid"}), 400
@@ -559,6 +569,7 @@ def is_user_admin(cuid):
         description: Server error
     """
     try:
+        USERS_COLLECTION  = get_collection("USERS_COLLECTION")
         user = USERS_COLLECTION.find_one({'cuid': cuid})
         if not user:
             return jsonify({"error": "User not found"}), 404
@@ -601,6 +612,7 @@ def approveSchedule_script(job_id):
       500:
         description: Scheduling failed
     """
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
     job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404
@@ -684,6 +696,7 @@ def rejectSchedule_script(job_id):
       500:
         description: Server error
     """
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
     updates = request.get_json()
     rejectReason = updates.get("rejectReason","Na")
     job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
@@ -753,6 +766,7 @@ def get_pending_approvals_from_all_scripts():
       500:
         description: Server error
     """
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
     try:
         pending_scripts = list(SCRIPTS_COLLECTION.find(
             {
@@ -788,6 +802,7 @@ def get_pending_approvals_from_scheduled_scripts():
       500:
         description: Server error
     """
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
     try:
         pending_scheduled = list(SCHEDULES_COLLECTION.find(
             {
@@ -824,6 +839,8 @@ def get_pending_approvals_for_all():
       500:
         description: Server error
     """
+    SCHEDULES_COLLECTION = get_collection("SCHEDULES_COLLECTION")
+    SCRIPTS_COLLECTION = get_collection("SCRIPTS_COLLECTION")
     try:
         # Get count of unapproved, pending ScheduledJobs
         scheduled_count = SCHEDULES_COLLECTION.count_documents({
@@ -888,6 +905,8 @@ def get_email_history():
       500:
         description: Server error
     """
+    EMAIL_RECORD = get_collection("EMAIL_RECORD")
+    EMAIL_CONFIG = get_collection("EMAIL_CONFIG")
     try:
         # Pagination params
         page = int(request.args.get('page', 1))
@@ -942,6 +961,8 @@ def get_email_stats():
     """
     Get summarized stats for email delivery (success/failure).
     """
+    EMAIL_RECORD = get_collection("EMAIL_RECORD")
+    EMAIL_CONFIG = get_collection("EMAIL_CONFIG")
     try:
         total_sent = EMAIL_RECORD.count_documents({"Status": "Sent"})
         total_failed = EMAIL_RECORD.count_documents({"Status": "Failed"})
@@ -1065,6 +1086,7 @@ def send_email_to_user():
 @require_roles_from_admin_controls(['admin', 'approver'])
 def get_email_configs():
     try:
+        EMAIL_CONFIG = get_collection("EMAIL_CONFIG")
         config_doc = EMAIL_CONFIG.find_one()
         if not config_doc:
             # Initialize default config if not found
@@ -1084,6 +1106,7 @@ def update_email_configs():
     Expects JSON body: { "internalTeam": ["user1@example.com", ...], ... }
     """
     try:
+        EMAIL_CONFIG = get_collection("EMAIL_CONFIG")
         new_configs = request.json
         if not isinstance(new_configs, dict):
             return jsonify({"error": "Invalid format. Expected a dictionary of lists."}), 400

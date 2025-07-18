@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import mongo,socketio,FRONTEND_URL,SCHEDULES_COLLECTION
+from app import mongo,socketio,FRONTEND_URL
 import datetime
 from app.routes import script_routes
 from bson import ObjectId
 from app.services.ScheduleService import schedule_script,load_existing_schedules,unschedule_script,DisableScript,exec_func
 from app.services.UniversalService import GetUserDetaials, GetInternalCCList,send_email_notification,GetAllApproversOrAdmin
 from app.services.EmailBody import FrameEmailBody
-
+from app.db_manager import get_collection
 
 def serialize_job(job):
     return {
@@ -223,6 +223,7 @@ def list_jobs():
           items:
             type: object
     """
+    SCHEDULES_COLLECTION  = get_collection("SCHEDULES_COLLECTION")
     jobs_cursor = SCHEDULES_COLLECTION.find()
     jobs = [serialize_job(job) for job in jobs_cursor]
     return jsonify(jobs)
@@ -249,6 +250,7 @@ def get_job(job_id):
       404:
         description: Job not found
     """
+    SCHEDULES_COLLECTION  = get_collection("SCHEDULES_COLLECTION")
     job = SCHEDULES_COLLECTION.find_one({"_id": job_id})
     if not job:
         return jsonify({"error": "Job not found"}), 404

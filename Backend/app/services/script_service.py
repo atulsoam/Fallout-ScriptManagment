@@ -1,7 +1,7 @@
 from app import mongo
-
+from app.db_manager import get_collection,get_analytics_db
 def getcollectionDetails(collection, requestedScript):
-    StatusDb = mongo.cx['PROD_BM_ANALYTICS']
+    StatusDb = get_analytics_db()
     collection = StatusDb[collection]
     collectionOutput_fixed = 0
     collectionOutput_pending = 0

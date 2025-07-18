@@ -4,13 +4,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from email.utils import formataddr
-from app import mongo,USERS_COLLECTION,EMAIL_RECORD,EMAIL_CONFIG
+from app import mongo
 from datetime import datetime
 import os
 import base64
 import mimetypes
 from email.mime.application import MIMEApplication
-
+from app.db_manager import get_collection
 def send_email_notification(receiverlist, CCList, subject, body, attachments=None):
     """
     Send an email notification (with optional attachments) and store the result in MongoDB.
@@ -110,6 +110,7 @@ def StoreEmailRecords(record):
     """
     Store email record in the EmailRecords collection.
     """
+    EMAIL_RECORD = get_collection("EMAIL_RECORDS")
     try:
         record["createdAt"] = datetime.now()
         EMAIL_RECORD.insert_one(record)
@@ -126,6 +127,7 @@ def GetUserDetaials(cuid):
     Returns:
         dict: User details if found, otherwise None.
     """
+    USERS_COLLECTION = get_collection("USERS_COLLECTION")
     try:
         user = USERS_COLLECTION.find_one({"_id": cuid})
         return user if user else None
@@ -134,7 +136,7 @@ def GetUserDetaials(cuid):
         return None
 
 def GetAllApproversOrAdmin(isApprover=False,isAdmin=False):
-    
+    USERS_COLLECTION = get_collection("USERS_COLLECTION")
     try:
         query = {}
         if isApprover:
@@ -154,6 +156,7 @@ def GetInternalCCList():
     Returns:
         list: List of email addresses to be used in CC.
     """
+    EMAIL_CONFIG = get_collection("EMAIL_CONFIG")
     try:
         cc_list = EMAIL_CONFIG.find_one()
         if cc_list and "configs" in cc_list and "InternalCCList" in cc_list["configs"]:

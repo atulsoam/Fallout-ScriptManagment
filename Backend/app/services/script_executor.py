@@ -1,53 +1,54 @@
 import subprocess, tempfile, threading, os, traceback
 import datetime
 import sys
-from app import mongo,socketio ,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION
-
+from app import mongo,socketio 
+from app.db_manager import get_collection,get_analytics_db
+from flask import current_app
 # In-memory tracking
 running_processes = {}
-def update_running_script_status(docid, script_name, status,executions_collection, error_message=None):
-        StatusDb = mongo.cx['PROD_BM_ANALYTICS']
-        collection = StatusDb[script_name]
-        all_statuses = collection.distinct("status")
-        status_list = {}
+def update_running_script_status(docid, script_name, status,executions_collection,StatusDb, error_message=None):
+    # StatusDb = get_analytics_db()
+    collection = StatusDb[script_name]
+    all_statuses = collection.distinct("status")
+    status_list = {}
 
-        for status_val in all_statuses:
-            count = collection.count_documents({"status": status_val, "ScriptidentificationId": str(docid)})
-            status_list[status_val] = count
+    for status_val in all_statuses:
+        count = collection.count_documents({"status": status_val, "ScriptidentificationId": str(docid)})
+        status_list[status_val] = count
 
-        # Default values
-        status_list.setdefault("Not Fixed", 0)
-        status_list.setdefault("Fixed", 0)
+    # Default values
+    status_list.setdefault("Not Fixed", 0)
+    status_list.setdefault("Fixed", 0)
 
-        processed_doc = collection.find_one({
-            "otherDetail": "processedAccounts",
-            "ScriptidentificationId": str(docid)
-        })
-        status_list["processedAccounts"] = processed_doc.get("totalProcessedAccounts", 0) if processed_doc else 0
+    processed_doc = collection.find_one({
+        "otherDetail": "processedAccounts",
+        "ScriptidentificationId": str(docid)
+    })
+    status_list["processedAccounts"] = processed_doc.get("totalProcessedAccounts", 0) if processed_doc else 0
 
-        status_list["Total"] = collection.count_documents({
-            "ScriptidentificationId": str(docid),
-            "otherDetail": {"$ne": "processedAccounts"}
-        })
+    status_list["Total"] = collection.count_documents({
+        "ScriptidentificationId": str(docid),
+        "otherDetail": {"$ne": "processedAccounts"}
+    })
 
-        if error_message:
-            status_list["error"] = f"Got error in running script {error_message}"
-        print(status_list,"statusList")
-        executions_collection.update_one(
-            {"_id": str(docid)},
-            {"$set": {
-                "status": status,
-                "endTime": datetime.datetime.now(),
-                "statusList": status_list
-            }}
-        )
-        print(f"Updates are done",docid,script_name,status,error_message)
+    if error_message:
+        status_list["error"] = f"Got error in running script {error_message}"
+    print(status_list,"statusList")
+    executions_collection.update_one(
+        {"_id": str(docid)},
+        {"$set": {
+            "status": status,
+            "endTime": datetime.datetime.now(),
+            "statusList": status_list
+        }}
+    )
+    print(f"Updates are done",docid,script_name,status,error_message)
 
 def run_script(script_name, script_code, exec_id, executions_collection):
-
+    LOGS_COLLECTION = get_collection("LOGS_COLLECTION")
+    ANALYTICS_DB  = get_analytics_db()
     def execute():
         start_time = datetime.datetime.now()  
-
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.py', mode='w') as temp_file:
                 temp_file.write(script_code + f"\n\nmain('{exec_id}')\n")  # Inject main(exec_id)
@@ -126,7 +127,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                 "Duration": str(duration)
             }}
             )
-            update_running_script_status(exec_id, script_name, status,executions_collection)
+            update_running_script_status(exec_id, script_name, status,executions_collection,ANALYTICS_DB)
 
         except Exception as e:
             error_logs = traceback.format_exc().splitlines()
@@ -137,7 +138,7 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                     "line": line,
                     "timestamp": datetime.datetime.now(),
                 })
-            update_running_script_status(exec_id, script_name, "Terminated",executions_collection, str(e))
+            update_running_script_status(exec_id, script_name, "Terminated",executions_collection,ANALYTICS_DB, str(e))
 
         finally:
             running_processes.pop(exec_id, None)
@@ -156,6 +157,9 @@ def run_script(script_name, script_code, exec_id, executions_collection):
 
 def stop_script(exec_id):
     info = running_processes.get(exec_id)
+    SCRIPTS_EXECUTION_COLLECTION = get_collection("SCRIPTS_EXECUTION_COLLECTION")
+    LOGS_COLLECTION = get_collection("LOGS_COLLECTION")
+    ANALYTICS_DB = get_analytics_db()
     if not info:
         return False
 
@@ -169,7 +173,7 @@ def stop_script(exec_id):
             print(f"Error terminating script {exec_id}: {e}")
         
         # Mark script as terminated
-        update_running_script_status(exec_id, script_name, "Terminated",SCRIPTS_EXECUTION_COLLECTION)
+        update_running_script_status(exec_id, script_name, "Terminated",SCRIPTS_EXECUTION_COLLECTION,ANALYTICS_DB)
 
 
         # Log termination message as separate log entry

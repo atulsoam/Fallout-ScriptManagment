@@ -1,16 +1,18 @@
-from app import mongo,SCHEDULES_COLLECTION,SCRIPTS_COLLECTION,SCRIPTS_EXECUTION_COLLECTION,CATEGORY_SUB_CATEGORY
+from app import mongo
 import datetime
 from datetime import timedelta
 from collections import Counter, defaultdict
+from app.db_manager import get_collection
 
 # Collections
-all_script = SCRIPTS_COLLECTION
-running_script = SCRIPTS_EXECUTION_COLLECTION
-scheduled_job = SCHEDULES_COLLECTION 
-category_sub_category =   CATEGORY_SUB_CATEGORY
+
 
 
 def get_dashboard_counts(days=10, top_n=5):
+    all_script = get_collection("SCRIPTS_COLLECTION")
+    running_script = get_collection("SCRIPTS_EXECUTION_COLLECTION")
+    scheduled_job = get_collection("SCHEDULES_COLLECTION") 
+    category_sub_category =   get_collection("CATEGORY_SUB_CATEGORY_COLLECTION")
     all_scripts = list(all_script.find({}))
     running_scripts = list(running_script.find({}))
     scheduled_jobs = list(scheduled_job.find({"isApproved":True,"enabled":True}))

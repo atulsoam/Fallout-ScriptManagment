@@ -1,12 +1,14 @@
 from flask import request, jsonify,send_file,session
 from app.routes import script_routes
-from app import mongo,SCRIPTS_EXECUTION_COLLECTION,LOGS_COLLECTION,ANALYTICS_DB as StatusDb
+from app import mongo
 from app.services.script_service import getcollectionDetails
 from datetime import datetime,timedelta
 import json
 import pandas as pd
 import io
 import traceback
+from app.db_manager import get_collection,get_analytics_db
+
 
 @script_routes.route("/getscriptHistory", methods=["GET"])
 def script_history():
@@ -78,6 +80,8 @@ def script_history():
       500:
         description: Internal server error
     """
+    SCRIPTS_EXECUTION_COLLECTION = get_collection("SCRIPTS_EXECUTION_COLLECTION")
+    StatusDb = get_analytics_db()
     try:
         # --- Pagination & Filters ---
         # print(session["user"])
@@ -235,6 +239,7 @@ def export_script_data():
       500:
         description: Server error
     """
+    StatusDb = get_analytics_db()
     try:
         data = request.get_json()
         collection_name = data.get("collectionName")
@@ -321,6 +326,7 @@ def get_script_data_by_type():
       500:
         description: Server error
     """
+        StatusDb = get_analytics_db()
         data = request.json
         collection_name = data.get("collectionName")
         script_id = data.get("scriptId")
@@ -377,6 +383,7 @@ def download_script_logs():
     """
     data = request.get_json()
     exec_id = data.get("execId")
+    LOGS_COLLECTION = get_collection("LOGS_COLLECTION")
 
     if not exec_id:
         return jsonify({"error": "execId is required"}), 400

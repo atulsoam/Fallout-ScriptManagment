@@ -1,9 +1,9 @@
 from functools import wraps
 from flask import request, jsonify
-from app import mongo,ADMIN_CONTROLLS
+from app import mongo
 import logging
 # logging.basicConfig(level=logging.DEBUG)
-
+from app.db_manager import get_collection
 
 
 def require_roles_from_admin_controls(allowed_roles=["admin", "approver"]):
@@ -11,6 +11,7 @@ def require_roles_from_admin_controls(allowed_roles=["admin", "approver"]):
         @wraps(f)
         def wrapper(*args, **kwargs):
             cuid = None
+            ADMIN_CONTROLLS = get_collection("ADMIN_CONTROLLS")
 
             # Try JSON body if content type is application/json
             if request.is_json:
