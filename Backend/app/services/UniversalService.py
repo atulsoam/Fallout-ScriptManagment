@@ -110,7 +110,7 @@ def StoreEmailRecords(record):
     """
     Store email record in the EmailRecords collection.
     """
-    EMAIL_RECORD = get_collection("EMAIL_RECORDS")
+    EMAIL_RECORD = get_collection("EMAIL_RECORD")
     try:
         record["createdAt"] = datetime.now()
         EMAIL_RECORD.insert_one(record)

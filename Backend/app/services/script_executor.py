@@ -1,9 +1,12 @@
+import re
 import subprocess, tempfile, threading, os, traceback
 import datetime
 import sys
 from app import mongo,socketio 
 from app.db_manager import get_collection,get_analytics_db
 from flask import current_app
+import queue
+
 # In-memory tracking
 running_processes = {}
 def update_running_script_status(docid, script_name, status,executions_collection,StatusDb, error_message=None):
@@ -51,16 +54,20 @@ def run_script(script_name, script_code, exec_id, executions_collection):
         start_time = datetime.datetime.now()  
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.py', mode='w') as temp_file:
+                # script_code_Updted= re.sub(r'print\((.*?)\)', r'print(\1, flush=True)', script_code)
                 temp_file.write(script_code + f"\n\nmain('{exec_id}')\n")  # Inject main(exec_id)
+
                 # temp_file.write(script_code)
                 temp_path = temp_file.name
-
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
             proc = subprocess.Popen(
-                [sys.executable, temp_path],
+                [sys.executable,"-u", temp_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1  # line-buffered
+                bufsize=1,  # line-buffered
+                universal_newlines=True
             )
 
             running_processes[exec_id] = {
@@ -69,45 +76,67 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                 "StartedAt":str(datetime.datetime.now())
             }
 
+
             def stream_output(stream, stream_name):
                 buffer = []
                 batch_size = 500
-                for line in iter(stream.readline, ''):
-                    clean_line = line.strip()
-                    line_obj = {
-                        "text": clean_line,
-                        "timestamp": str(datetime.datetime.now()),
-                        "stream_name":stream_name
-                    }
+                db_queue = queue.Queue()
 
-                    # print(f"Emitting log to socket: {line_obj}")
-                    socketio.emit('log_update', {
-                        "exec_id": exec_id,
-                        "script_name": script_name,
-                        "line": line_obj
-                    })
+                def db_worker():
+                    while True:
+                        batch = db_queue.get()
+                        if batch is None:
+                            break
+                        LOGS_COLLECTION.insert_one(batch)
+                        db_queue.task_done()
 
+                db_thread = threading.Thread(target=db_worker, daemon=True)
+                db_thread.start()
 
-                    buffer.append(line_obj)
+                try:
+                    for line in iter(stream.readline, ''):
+                        clean_line = line.strip()
+                        if not clean_line:
+                            continue
 
-                    if len(buffer) >= batch_size:
-                        LOGS_COLLECTION.insert_one({
+                        timestamp = str(datetime.datetime.now())
+                        line_obj = {
+                            "text": clean_line,
+                            "timestamp": timestamp,
+                            "stream_name": stream_name
+                        }
+
+                        # Emit throttled, e.g., sleep 5ms between emits if needed
+                        socketio.emit('log_update', {
                             "exec_id": exec_id,
                             "script_name": script_name,
-                            "lines": buffer.copy(),
-                            "stream_name":stream_name
+                            "line": line_obj
                         })
-                        buffer.clear()
 
-                if buffer:
-                    LOGS_COLLECTION.insert_one({
-                        "exec_id": exec_id,
-                        "script_name": script_name,
-                        "lines": buffer,
-                        "stream_name":stream_name
-                    })
+                        buffer.append(line_obj)
 
-                stream.close()
+                        if len(buffer) >= batch_size:
+                            db_queue.put({
+                                "exec_id": exec_id,
+                                "script_name": script_name,
+                                "lines": buffer.copy(),
+                                "stream_name": stream_name
+                            })
+                            buffer.clear()
+                finally:
+                    if buffer:
+                        db_queue.put({
+                            "exec_id": exec_id,
+                            "script_name": script_name,
+                            "lines": buffer,
+                            "stream_name": stream_name
+                        })
+
+                    db_queue.put(None)  # Signal DB thread to finish
+                    db_thread.join()
+                    stream.close()
+
+
 
             stdout_thread = threading.Thread(target=stream_output, args=(proc.stdout, "stdout"))
             stderr_thread = threading.Thread(target=stream_output, args=(proc.stderr, "stderr"))
