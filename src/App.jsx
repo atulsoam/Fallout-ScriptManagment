@@ -19,6 +19,7 @@ import Footer from '../src/Components/UI/Footer';
 import EditorLayout from './Pages/CoderEditor';
 import EmailDashboardPage from './Pages/EmailHistoryPage';
 import AdminSendEmail from "./Pages/SendEmail"
+import ScriptStructure from "./Pages/ScriptStructure"
 
 function App() {
   const location = useLocation();
@@ -102,6 +103,7 @@ function App() {
             <Route path="/adminRequests" element={<PendingApprovals />} />
             <Route path="/EmailHistory" element={<EmailDashboardPage />} />
             <Route path="/SendEmail" element={<AdminSendEmail />} />
+            <Route path="/ScriptStructure" element={<ScriptStructure />} />
             <Route path="/logout" element={<Logout />} />
           </Routes>
         </main>
