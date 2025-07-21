@@ -75,6 +75,9 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                 "scriptName": script_name,
                 "StartedAt":str(datetime.datetime.now())
             }
+            runningItems = get_running_scripts()
+            if runningItems:
+                socketio.emit('runningJobs', runningItems)
 
 
             def stream_output(stream, stream_name):
@@ -156,7 +159,8 @@ def run_script(script_name, script_code, exec_id, executions_collection):
                 "Duration": str(duration)
             }}
             )
-            update_running_script_status(exec_id, script_name, status,executions_collection,ANALYTICS_DB)
+            update_running_script_status(exec_id, script_name, status,executions_collection,ANALYTICS_DB)                    
+            socketio.emit("ScriptCompletion",{"exec_id":exec_id,"script_name":script_name,"duration":duration})
 
         except Exception as e:
             error_logs = traceback.format_exc().splitlines()
@@ -202,7 +206,7 @@ def stop_script(exec_id):
             print(f"Error terminating script {exec_id}: {e}")
         
         # Mark script as terminated
-        update_running_script_status(exec_id, script_name, "Terminated",SCRIPTS_EXECUTION_COLLECTION,ANALYTICS_DB)
+        update_running_script_status(exec_id, script_name, "Terminated",SCRIPTS_EXECUTION_COLLECTION,ANALYTICS_DB,"Script Terminated Manually")
 
 
         # Log termination message as separate log entry

@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { FaFileExport, FaSpinner, FaFileAlt } from 'react-icons/fa';
-import classNames from 'classnames';
-import { API_BASE } from '../../utils/Config';
-import ScriptDataModal from './ScriptStatusModal';
-import { getScriptDataByType } from '../../services/HistoryDashboard/HistoryServices';
-import { toast } from 'react-toastify';
+import React, { useState } from "react";
+import { FaFileExport, FaSpinner, FaFileAlt } from "react-icons/fa";
+import classNames from "classnames";
+import { API_BASE } from "../../utils/Config";
+import ScriptDataModal from "./ScriptStatusModal";
+import { getScriptDataByType } from "../../services/HistoryDashboard/HistoryServices";
+import { toast } from "react-toastify";
 
 const statusStyles = {
-  Completed: 'bg-green-100 text-green-800',
-  Terminated: 'bg-red-100 text-red-800',
-  Running: 'bg-yellow-100 text-yellow-800',
+  Completed: "bg-green-100 text-green-800",
+  Terminated: "bg-red-100 text-red-800",
+  Running: "bg-yellow-100 text-yellow-800",
 };
 
 const HistoryTable = ({ data = [] }) => {
@@ -17,7 +17,7 @@ const HistoryTable = ({ data = [] }) => {
   const [downloadingLogId, setDownloadingLogId] = useState(null);
   const [modalData, setModalData] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleCellClick = async (item, type) => {
@@ -29,9 +29,9 @@ const HistoryTable = ({ data = [] }) => {
       setModalData(result || []);
       setLoading(false);
     } catch (err) {
-      console.error('Failed to fetch data:', err);
+      console.error("Failed to fetch data:", err);
       setModalOpen(false);
-      toast.error('Failed to fetch data. Please try again.');
+      toast.error("Failed to fetch data. Please try again.");
       setLoading(false);
     }
   };
@@ -40,28 +40,28 @@ const HistoryTable = ({ data = [] }) => {
     try {
       setExportingId(item.id);
       const response = await fetch(`${API_BASE}/exportScriptData`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           collectionName: item.name,
           scriptId: item.id,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to export data.');
+      if (!response.ok) throw new Error("Failed to export data.");
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `${item.name}_export.xlsx`);
+      link.setAttribute("download", `${item.name}_export.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed:', err);
-      toast.error('Export failed. Please try again.');
+      console.error("Export failed:", err);
+      toast.error("Export failed. Please try again.");
     } finally {
       setExportingId(null);
     }
@@ -71,27 +71,27 @@ const HistoryTable = ({ data = [] }) => {
     try {
       setDownloadingLogId(item.id);
       const response = await fetch(`${API_BASE}/downloadScriptLogs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           execId: item.id,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to download logs.');
+      if (!response.ok) throw new Error("Failed to download logs.");
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `${item.name}_logs.txt`);
+      link.setAttribute("download", `${item.name}_logs.txt`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Log download failed:', err);
-      toast.error('Failed to download logs. Please try again.');
+      console.error("Log download failed:", err);
+      toast.error("Failed to download logs. Please try again.");
     } finally {
       setDownloadingLogId(null);
     }
@@ -121,7 +121,10 @@ const HistoryTable = ({ data = [] }) => {
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan="14" className="text-center py-6 text-gray-400 italic">
+              <td
+                colSpan="14"
+                className="text-center py-6 text-gray-400 italic"
+              >
                 No data found.
               </td>
             </tr>
@@ -130,8 +133,8 @@ const HistoryTable = ({ data = [] }) => {
               <tr
                 key={item.id || idx}
                 className={classNames(
-                  'hover:bg-blue-50 transition-colors border-b border-gray-100',
-                  idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  "hover:bg-blue-50 transition-colors border-b border-gray-100",
+                  idx % 2 === 0 ? "bg-white" : "bg-gray-50"
                 )}
               >
                 <td
@@ -143,38 +146,50 @@ const HistoryTable = ({ data = [] }) => {
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
-                      'px-2 py-0.5 rounded-full text-[8px] font-semibold',
-                      statusStyles[item.status] || 'bg-gray-200 text-gray-700'
+                      "px-2 py-0.5 rounded-full text-[8px] font-semibold",
+                      statusStyles[item.status] || "bg-gray-200 text-gray-700"
                     )}
-                    title={item.status}
+                    title={
+                      item.status === "Terminated"
+                        ? item.ScriptError
+                        : item.status
+                    }
                   >
                     {item.status}
                   </span>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">{item.type}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.subType || '-'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.executedFrom || '-'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.user || '-'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.startTime}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {item.subType || "-"}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {item.executedFrom || "-"}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {item.user || "-"}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {item.startTime}
+                </td>
                 <td className="px-3 py-2 whitespace-nowrap">{item.endTime}</td>
 
                 <td
                   className="px-2 py-2 text-right text-blue-600 hover:underline cursor-pointer font-semibold"
-                  onClick={() => handleCellClick(item, 'Fixed')}
+                  onClick={() => handleCellClick(item, "Fixed")}
                   title="View Fixed details"
                 >
                   {item.fixed}
                 </td>
                 <td
                   className="px-2 py-2 text-right text-blue-600 hover:underline cursor-pointer font-semibold"
-                  onClick={() => handleCellClick(item, 'Not Fixed')}
+                  onClick={() => handleCellClick(item, "Not Fixed")}
                   title="View Not Fixed details"
                 >
                   {item.notFixed}
                 </td>
                 <td
                   className="px-2 py-2 text-right text-blue-600 hover:underline cursor-pointer font-semibold"
-                  onClick={() => handleCellClick(item, 'All')}
+                  onClick={() => handleCellClick(item, "All")}
                   title="View All details"
                 >
                   {item.total}
@@ -221,10 +236,18 @@ const HistoryTable = ({ data = [] }) => {
               <td colSpan="8" className="px-3 py-2 text-right">
                 Total
               </td>
-              <td className="px-2 py-4 text-right">{data.reduce((acc, cur) => acc + (cur.fixed || 0), 0)}</td>
-              <td className="px-2 py-2 text-right">{data.reduce((acc, cur) => acc + (cur.notFixed || 0), 0)}</td>
-              <td className="px-2 py-2 text-right">{data.reduce((acc, cur) => acc + (cur.total || 0), 0)}</td>
-              <td className="px-2 py-2 text-right">{data.reduce((acc, cur) => acc + (cur.processed || 0), 0)}</td>
+              <td className="px-2 py-4 text-right">
+                {data.reduce((acc, cur) => acc + (cur.fixed || 0), 0)}
+              </td>
+              <td className="px-2 py-2 text-right">
+                {data.reduce((acc, cur) => acc + (cur.notFixed || 0), 0)}
+              </td>
+              <td className="px-2 py-2 text-right">
+                {data.reduce((acc, cur) => acc + (cur.total || 0), 0)}
+              </td>
+              <td className="px-2 py-2 text-right">
+                {data.reduce((acc, cur) => acc + (cur.processed || 0), 0)}
+              </td>
               {/* <td className="px-3 py-2 text-right">{data.reduce((acc, cur) => acc + (cur.duration || 0), 0).toFixed(2)}</td> */}
               <td className="px-3 py-2"></td>
             </tr>
