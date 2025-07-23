@@ -140,45 +140,60 @@ def check_order_doc(ban):
         logging.error(f"Error processing BAN {ban}: {e}")
         return {}
 
-def process_ban(ban,exec_id = None):
-    report = check_order_doc(ban)
-    if report:
-        reporting(report)
-# ===========================
-# Threaded BAN processing with progress count and logging
-# ===========================
-def threaded_process_bans(ban_list, max_workers=MAX_WORKERS,exec_id=None):
-    processed_count = 0
-    lock = threading.Lock()
 
-    def task(ban):
-        nonlocal processed_count
-        process_ban(ban,exec_id)
-        with lock:
-            processed_count += 1
-            print(f"Processed {processed_count}/{len(ban_list)} BANs", end='\r')
-            logging.info(f"Processed {processed_count}/{len(ban_list)} BANs")
-
-    logging.info(f"Starting processing of {len(ban_list)} BANs with {max_workers} threads...")
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(task, ban) for ban in ban_list]
-        for future in as_completed(futures):
-            future.result()  # raise exceptions if any
-
-    print(f"\nCompleted processing all {len(ban_list)} BANs.")
-    logging.info(f"Completed processing all {len(ban_list)} BANs.")
 
 # ===========================
 # Extract BANs & process them threaded
 # ===========================
-def extract_ban_data():
+def extract_ban_data(batch_size=1000):
+    """
+    Streams BANs with companyOwnerId '1' from MongoDB in batches,
+    and processes them efficiently using threading.
+    """
     client = connect_with_retry(connStrDict['PROD'], label="PROD Mongo for extract_ban_data")
+    collection = client['BMP_ORDERMGMT_1'].customerOrder
     query = {"accountInfo.companyOwnerId": "1"}
-    cursor = client['BMP_ORDERMGMT_1'].customerOrder.find(query)
-    bans = [order['accountInfo']['ban'] for order in cursor]
-    client.close()
-    threaded_process_bans(bans)
+    projection = {"accountInfo.ban": 1, "_id": 0}
+
+    cursor = collection.find(query, projection, no_cursor_timeout=True)
+
+    batch = []
+    total_processed = 0
+    start_time = time.time()
+
+    logging.info("Starting streaming of BANs from MongoDB...")
+
+    try:
+        for doc in cursor:
+            ban = doc.get("accountInfo", {}).get("ban")
+            if not ban:
+                continue
+
+            batch.append(ban)
+
+            if len(batch) >= batch_size:
+                threaded_process_bans(batch)
+                total_processed += len(batch)
+                logging.info(f"Processed batch of {len(batch)}. Total processed: {total_processed}")
+                batch.clear()
+
+                # Optional: Log progress every 5 minutes
+                if time.time() - start_time > 300:
+                    logging.info(f"Progress update: {total_processed} BANs processed so far.")
+                    start_time = time.time()
+
+        # Process remaining batch
+        if batch:
+            threaded_process_bans(batch)
+            total_processed += len(batch)
+            logging.info(f"Processed final batch. Total processed: {total_processed}")
+
+    except Exception as e:
+        logging.error(f"Error in extract_ban_data: {e}")
+    finally:
+        cursor.close()
+        logging.info("MongoDB cursor closed.")
+
 
 def process_pet1():
     client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo for process_pet1")
@@ -192,60 +207,106 @@ def process_excel(input_file="input_.xlsx"):
     bans = [str(row['ban']) for idx, row in df.iterrows()]
     threaded_process_bans(bans)
 
+def process_by_execution_id(exec_id, batch_size=1000):
+    """
+    Efficiently streams BANs from MongoDB and processes them in batches with threading.
+    Designed to handle millions of records without high memory usage.
+    """
+    client = connect_with_retry(connStrDict['PROD'], label="PROD Mongo for extract_ban_data")
+    collection = client['BMP_ORDERMGMT_1'].customerOrder
+    cursor = collection.find({}, {'accountInfo.ban': 1, '_id': 0}, no_cursor_timeout=True)
+
+    batch = []
+    count = 0
+    total_processed = 0
+    start_time = time.time()
+
+    logging.info("Streaming and processing BANs...")
+
+    try:
+        for doc in cursor:
+            ban = doc.get('accountInfo', {}).get('ban')
+            if not ban:
+                continue
+
+            batch.append(ban)
+            count += 1
+
+            if len(batch) >= batch_size:
+                threaded_process_bans(batch, exec_id=exec_id)
+                total_processed += len(batch)
+                logging.info(f"Processed batch of {len(batch)}. Total so far: {total_processed}")
+                batch.clear()
+
+                # Optional: update progress tracking in DB every 5 minutes
+                if time.time() - start_time >= 300:
+                    update_progress(exec_id, total_processed)
+                    start_time = time.time()
+
+        # Process any remaining BANs
+        if batch:
+            threaded_process_bans(batch, exec_id=exec_id)
+            total_processed += len(batch)
+            logging.info(f"Processed final batch of {len(batch)}. Total: {total_processed}")
+
+        # Final update
+        update_progress(exec_id, total_processed)
+
+    except Exception as e:
+        logging.exception(f"Error in process_by_execution_id: {e}")
+        update_progress(exec_id, total_processed, error=str(e))
+    finally:
+        cursor.close()
+
+def update_progress(exec_id, count, error=None):
+    try:
+        client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo for process_pet1")
+        update_data = {
+            "otherDetail": "processedAccounts",
+            "ScriptidentificationId": str(exec_id),
+            "totalProcessedAccounts": count,
+        }
+        if error:
+            update_data["Error"] = error
+
+        ScriptCollection.update_one(
+            {"otherDetail": "processedAccounts", "ScriptidentificationId": str(exec_id)},
+            {"$set": update_data},
+            upsert=True
+        )
+        logging.info(f"Progress update: {count} BANs processed. Error: {error}")
+    except Exception as db_err:
+        logging.error(f"Failed to update progress for exec_id={exec_id}: {db_err}")
+
 # ===========================
 # Flask executor compatibility function
 # ===========================
-def process_by_execution_id(exec_id):
-    """
-    Called when script is executed by the Flask executor.
-    Uses execution ID to read bans from a known collection.
-    """
-    count = 0
+def process_ban(ban, exec_id=None):
+    report = check_order_doc(ban)
+    if report:
+        if exec_id:
+            report["ScriptidentificationId"] = str(exec_id)
+        reporting(report)
 
-    try:
-        flag = False
-        startTime = time.time()
-        batch = []
-        for order in client['BMP_ORDERMGMT_1'].customerOrder.find():
+def threaded_process_bans(ban_list, exec_id=None, max_workers=MAX_WORKERS):
+    processed_count = 0
+    lock = threading.Lock()
 
-            ban = order['accountInfo']['ban']
-            print(f"count -->  {count}")
-            print(f"ban --> {ban}")
-            count = count + 1
-            if ban not in batch:
-                batch.append(ban)
-                
-            if len(batch) >= 100:
-                threaded_process_bans(batch,exec_id=exec_id)
-                batch.clear()
-            currentTime = time.time()
-            if currentTime - startTime >= 30:
-                flag = True
-                startTime = currentTime
-            if flag:
-                check = list(
-                    ScriptCollection.find(
-                        {"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
-                if len(check) != 0:
-                    ScriptCollection.update_one({"_id": check[0]["_id"]},                                                                                       {"$set": {
-"totalProcessedAccounts": count}})
-                else:
-                    ScriptCollection.insert_one(
-                        {"otherDetail": "processedAccounts", "totalProcessedAccounts": count,"ScriptidentificationId":str(exec_id)})
-                flag = False
+    def task(ban):
+        nonlocal processed_count
+        try:
+            process_ban(ban, exec_id=exec_id)
+        except Exception as e:
+            logging.exception(f"Exception in thread while processing BAN {ban}: {e}")
+        finally:
+            with lock:
+                processed_count += 1
+                logging.info(f"Progress: {processed_count}/{len(ban_list)}")
 
-    except Exception as e:
-        print(f"Exception in main -> {e}")
-        check = list(
-            ScriptCollection.find({"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
-        if len(check) != 0:
-            ScriptCollection.update_one({"_id": check[0]["_id"]},
-                                                                               {"$set": {
-                                                                                   "totalProcessedAccounts": count,
-                                                                                   "Error": str(e)}})
-        else:
-            ScriptCollection.insert_one(
-                {"otherDetail": "processedAccounts", "totalProcessedAccounts": count, "Error": str(e),"ScriptidentificationId":str(exec_id)})
+    logging.info(f"Starting multithreaded processing of {len(ban_list)} BANs...")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(executor.map(task, ban_list))  # Faster than submit+as_completed
+    logging.info("Completed all BANs.")
 
 # ===========================
 # Entry Point
