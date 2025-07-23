@@ -21,6 +21,8 @@ import time
 import pandas as pd
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # ===========================
 # Logging Configuration
@@ -33,6 +35,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 MAX_RETRIES = 5
 RETRY_DELAY = 5
 ScriptCollectionName = "PRB0004863_Output"  # or set dynamically
+MAX_WORKERS = 10  # Number of threads
+
 
 # ===========================
 # Decode Base64 Credentials
@@ -135,43 +139,68 @@ def process_ban(ban):
     report = check_order_doc(ban)
     if report:
         reporting(report)
+# ===========================
+# Threaded BAN processing with progress count and logging
+# ===========================
+def threaded_process_bans(ban_list, script_collection_name=ScriptCollectionName, max_workers=MAX_WORKERS):
+    processed_count = 0
+    lock = threading.Lock()
 
+    def task(ban):
+        nonlocal processed_count
+        process_ban(ban, script_collection_name)
+        with lock:
+            processed_count += 1
+            print(f"Processed {processed_count}/{len(ban_list)} BANs", end='\r')
+            logging.info(f"Processed {processed_count}/{len(ban_list)} BANs")
+
+    logging.info(f"Starting processing of {len(ban_list)} BANs with {max_workers} threads...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(task, ban) for ban in ban_list]
+        for future in as_completed(futures):
+            future.result()  # raise exceptions if any
+
+    print(f"\nCompleted processing all {len(ban_list)} BANs.")
+    logging.info(f"Completed processing all {len(ban_list)} BANs.")
+
+# ===========================
+# Extract BANs & process them threaded
+# ===========================
 def extract_ban_data():
+    client = connect_with_retry(connStrDict['PROD'], label="PROD Mongo for extract_ban_data")
     query = {"accountInfo.companyOwnerId": "1"}
     cursor = client['BMP_ORDERMGMT_1'].customerOrder.find(query)
-    for count, order in enumerate(cursor, start=1):
-        ban = order['accountInfo']['ban']
-        logging.info(f"[{count}] Processing BAN: {ban}")
-        process_ban(ban)
+    bans = [order['accountInfo']['ban'] for order in cursor]
+    client.close()
+    threaded_process_bans(bans)
 
 def process_pet1():
+    client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo for process_pet1")
     cursor = client1['PROD_BM_ANALYTICS'].PRB0004863_Identification.find()
-    for count, doc in enumerate(cursor, start=1):
-        ban = doc.get("ban")
-        logging.info(f"[{count}] Processing BAN from PET1: {ban}")
-        process_ban(ban)
+    bans = [doc.get("ban") for doc in cursor]
+    client1.close()
+    threaded_process_bans(bans)
 
 def process_excel(input_file="input_.xlsx"):
     df = pd.read_excel(input_file)
-    for idx, row in df.iterrows():
-        ban = str(row['ban'])
-        logging.info(f"[Excel] Processing BAN: {ban}")
-        process_ban(ban)
+    bans = [str(row['ban']) for idx, row in df.iterrows()]
+    threaded_process_bans(bans)
 
 # ===========================
-# For Script Executor Use
+# Flask executor compatibility function
 # ===========================
 def process_by_execution_id(exec_id):
     """
     Called when script is executed by the Flask executor.
     Uses execution ID to read bans from a known collection.
     """
+    client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo for execution_id")
     collection = client1["PROD_BM_ANALYTICS"]["PRB0004863_Identification"]
     cursor = collection.find({})
-    for count, doc in enumerate(cursor, start=1):
-        ban = doc.get("ban")
-        logging.info(f"[ExecutionID: {exec_id}] Processing BAN #{count}: {ban}")
-        process_ban(ban)
+    bans = [doc.get("ban") for doc in cursor]
+    client1.close()
+    threaded_process_bans(bans)
 
 # ===========================
 # Entry Point
