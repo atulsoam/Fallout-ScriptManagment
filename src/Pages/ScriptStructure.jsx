@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   FaInfoCircle,
   FaExclamationTriangle,
@@ -7,7 +7,7 @@ import {
   FaCopy,
   FaCheck,
   FaDatabase,
-} from 'react-icons/fa';
+} from "react-icons/fa";
 
 const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
@@ -25,7 +25,7 @@ const CopyButton = ({ text }) => {
       title="Copy to clipboard"
     >
       {copied ? <FaCheck /> : <FaCopy />}
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 };
@@ -41,7 +41,7 @@ const CollapsibleSection = ({ title, icon, children, defaultOpen = false }) => {
       >
         {icon}
         {title}
-        <span className="ml-auto text-gray-400">{open ? '▲' : '▼'}</span>
+        <span className="ml-auto text-gray-400">{open ? "▲" : "▼"}</span>
       </button>
       {open && <div className="px-4 py-4 bg-white">{children}</div>}
     </div>
@@ -49,25 +49,7 @@ const CollapsibleSection = ({ title, icon, children, defaultOpen = false }) => {
 };
 
 export default function ScriptStructure() {
-  const threadExample = `import threading
-
-def process_account(account_id):
-    print(f"Processing account: {account_id}")
-
-def main(exec_id):
-    print(f"Script started with exec ID: {exec_id}")
-    accounts = [1, 2, 3, 4, 5]
-    threads = []
-
-    for acc in accounts:
-        t = threading.Thread(target=process_account, args=(acc,))
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print("Script completed")`;
+  const threadExample = ``;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 bg-white min-h-screen space-y-6">
@@ -83,16 +65,33 @@ def main(exec_id):
       </div>
 
       {/* Requirements */}
-      <CollapsibleSection title="Script Requirements" icon={<FaCode className="text-green-600" />} defaultOpen>
+      <CollapsibleSection
+        title="Script Requirements"
+        icon={<FaCode className="text-green-600" />}
+        defaultOpen
+      >
         <ul className="list-disc pl-5 text-sm text-gray-700 space-y-2">
-          <li>Your script must define a <code className="bg-gray-100 px-1 rounded">main(exec_id)</code> function.</li>
-          <li>Use <code>print()</code> for logging — logs will stream to the UI in real time.</li>
-          <li>Avoid blocking infinite loops; always ensure the script terminates.</li>
+          <li>
+            Your script must define a{" "}
+            <code className="bg-gray-100 px-1 rounded">main(exec_id)</code>{" "}
+            function.
+          </li>
+          <li>
+            Use <code>print()</code> for logging — logs will stream to the UI in
+            real time.
+          </li>
+          <li>
+            Avoid blocking infinite loops; always ensure the script terminates.
+          </li>
         </ul>
       </CollapsibleSection>
 
       {/* Multithreading example */}
-      <CollapsibleSection title="Multithreading Example" icon={<FaTerminal className="text-purple-600" />} defaultOpen>
+      <CollapsibleSection
+        title="Basic Example"
+        icon={<FaTerminal className="text-purple-600" />}
+        defaultOpen
+      >
         <div className="relative">
           <pre className="bg-gray-900 text-white text-sm rounded-lg p-4 overflow-x-auto">
             {threadExample}
@@ -102,57 +101,96 @@ def main(exec_id):
       </CollapsibleSection>
 
       {/* MongoDB rules */}
-      <CollapsibleSection title="Saving Script Output to MongoDB" icon={<FaDatabase className="text-indigo-600" />}>
+      <CollapsibleSection
+        title="Saving Script Output to MongoDB"
+        icon={<FaDatabase className="text-indigo-600" />}
+      >
         <div className="text-sm text-gray-700 space-y-3">
           <p>
-            Each script must save its output to a MongoDB collection named exactly after the script name.
-            For example, if the script name is <code>pet1</code>, it should write data to the <code>pet1</code> collection.
+            Each script must save its output to a MongoDB collection named
+            exactly after the script name. For example, if the script name is{" "}
+            <code>Stab_1</code>, it should write data to the <code>Stab_1</code>{" "}
+            collection.
           </p>
 
           <p>
-            The backend will read script stats from that collection to compute status updates. Your script must store:
+            The backend will read script stats from that collection to compute
+            status updates. Your script must store:
           </p>
 
           <ul className="list-disc pl-6 space-y-1">
-            <li><strong>ScriptidentificationId</strong> – should match the <code>exec_id</code> passed to your script.</li>
-            <li><strong>status</strong> – a label like <code>"Fixed"</code>, <code>"Not Fixed"</code>, etc.</li>
-            <li><strong>otherDetail: "processedAccounts"</strong> – to store total account count.</li>
+            <li>
+              <strong>ScriptidentificationId</strong> – should match the{" "}
+              <code>exec_id</code> passed to your script.
+            </li>
+            <li>
+              <strong>status</strong> – a label like <code>"Fixed"</code>,{" "}
+              <code>"Not Fixed"</code>, etc.
+            </li>
+            <li>
+              <strong>otherDetail: "processedAccounts"</strong> – to store total
+              account count.
+            </li>
           </ul>
 
-          <p>
-            Here's a sample document:
-          </p>
+          <p>Here's a sample document:</p>
 
           <pre className="bg-gray-100 text-gray-800 text-sm rounded p-4 overflow-x-auto">
-{`{
+            {`{
   "ScriptidentificationId": "abc123",
   "status": "Fixed",
-  "accountId": 567,
-  "otherDetail": "accountStatus"
+ ...
 }
 
 {
   "ScriptidentificationId": "abc123",
-  "otherDetail": "processedAccounts",
-  "totalProcessedAccounts": 25
+  ...
+}`}
+          </pre>
+          <p>
+            To record the processedAccounts for future use we should saving the
+            total processed accounts in same collection. Below is how we have to
+            save
+          </p>
+          <pre className="bg-gray-100 text-gray-800 text-sm rounded p-4 overflow-x-auto">
+            {`{
+"otherDetail": "processedAccounts",
+"ScriptidentificationId": ScriptidentificationId
 }`}
           </pre>
         </div>
       </CollapsibleSection>
 
       {/* Warnings */}
-      <CollapsibleSection title="Important Notes & Tracking Behavior" icon={<FaExclamationTriangle className="text-yellow-500" />}>
+      <CollapsibleSection
+        title="Important Notes & Tracking Behavior"
+        icon={<FaExclamationTriangle className="text-yellow-500" />}
+      >
         <ul className="list-disc pl-5 text-sm text-gray-700 space-y-2">
-          <li>Status counts (e.g., <code>Fixed</code>, <code>Not Fixed</code>) are pulled from the script-named collection.</li>
-          <li>The total number of records is based on documents with the matching <code>ScriptidentificationId</code>, excluding <code>processedAccounts</code>.</li>
-          <li>If the collection is misnamed, or missing required fields, status updates will be inaccurate.</li>
-          <li>Errors during execution are captured and added to <code>statusList["error"]</code> in the backend.</li>
+          <li>
+            Status counts (e.g., <code>Fixed</code>, <code>Not Fixed</code>) are
+            pulled from the script-named collection.
+          </li>
+          <li>
+            The total number of records is based on documents with the matching{" "}
+            <code>ScriptidentificationId</code>, excluding{" "}
+            <code>processedAccounts</code>.
+          </li>
+          <li>
+            If the collection is misnamed, or missing required fields, status
+            updates will be inaccurate.
+          </li>
+          <li>
+            Errors during execution are captured and added to{" "}
+            <code>statusList["error"]</code> in the backend.
+          </li>
         </ul>
       </CollapsibleSection>
 
       {/* Footer */}
       <p className="text-center text-xs text-gray-400 pt-6 border-t">
-        Last updated automatically based on backend logic. Refer to your team lead for schema changes.
+        Last updated automatically based on backend logic. Refer to your team
+        lead for schema changes.
       </p>
     </div>
   );
