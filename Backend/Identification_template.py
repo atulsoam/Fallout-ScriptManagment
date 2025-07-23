@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # ===========================
 MAX_RETRIES = 5
 RETRY_DELAY = 5
-ScriptCollectionName = "PRB0004863_Output"  # or set dynamically
+ScriptCollectionName = ""  # or set dynamically
 
 # ===========================
 # Decode Base64 Credentials
@@ -64,9 +64,15 @@ def connect_with_retry(uri, label="MongoClient"):
 
 # MongoDB URI setup
 connStrDict = {
+    'TEST1': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_1?readPreference=secondaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'TEST2': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_2?readPreference=primaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'TEST4': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_4?readPreference=secondaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'DEVSI4': 'mongodb://BMOM_app:BM_app_Wd!912@vlmddmong02.dev.intranet:11000/mongodb://BMP_rep:BMP_rep_ctl123@bluem-mongo-prod-01.corp.intranet:14000/BMP_TOMORCHESTRATOR_1?authSource=admin?authSource=admin',
     'PROD': f'mongodb://{final_user}:{final_password}@bluem-mongo-prod-01.corp.intranet:14000/BMP_ORDERMGMT_1?authSource=admin',
+    'DEVSI2': 'mongodb://BMOM_app:BM_app_Wd!912@vlmddmong02.dev.intranet:11000/BMP_ORDERMGMT_2?authSource=admin',
     'PET1': 'mongodb://BMP_dba:BMP_dba_ctl123@vlmddmong04.dev.intranet:24000'
 }
+
 client = connect_with_retry(connStrDict['PROD'], label="PROD Mongo")
 client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo")
 analytics_db = client1["PROD_BM_ANALYTICS"]
@@ -102,11 +108,11 @@ def check_order_doc(ban):
         if not order:
             return {}
 
-        site_order = order['siteOrders'][-1]
-        order_ref = site_order['orderReference']
-        location_attrs = site_order['orderDocument']['serviceAddress']['locationAttributes']
+        siteOrders = order['siteOrders'][-1]
+        orderReference = siteOrders['orderReference']
+        locationAttributes = siteOrders['orderDocument']['serviceAddress']['locationAttributes']
 
-        location = {'CENTURYLINK': 'LC', 'QWEST COMMUNICATIONS': 'LQ'}.get(location_attrs.get('legacyProvider', ''), '')
+        location = {'CENTURYLINK': 'LC', 'QWEST COMMUNICATIONS': 'LQ'}.get(locationAttributes.get('legacyProvider', ''), '')
         company_map = {'1': 'Lumen', '4': 'Bright Speed'}
         company = company_map.get(order['accountInfo']['companyOwnerId'], '')
 
@@ -114,15 +120,15 @@ def check_order_doc(ban):
             return {}
 
         result.update({
-            "siteOrderNumber": order_ref.get('siteOrderNumber'),
-            "orderReferenceNumber": order_ref.get('orderReferenceNumber'),
-            "siteOrderType": order_ref.get('siteOrderType'),
-            "siteOrderStatus": order_ref.get('siteOrderStatus'),
-            "SourceSystem": order_ref.get('sourceSystem'),
+            "siteOrderNumber": orderReference.get('siteOrderNumber'),
+            "orderReferenceNumber": orderReference.get('orderReferenceNumber'),
+            "siteOrderType": orderReference.get('siteOrderType'),
+            "siteOrderStatus": orderReference.get('siteOrderStatus'),
+            "SourceSystem": orderReference.get('sourceSystem'),
             "orderDate": order.get('orderDate'),
             "legacyProvider": location,
             "Company": company,
-            "FinalDueDate": site_order['orderDocument']['schedule']['dates']['finalDueDate'],
+            "FinalDueDate": siteOrders['orderDocument']['schedule']['dates']['finalDueDate'],
             "salesChannel": order.get('salesChannel')
         })
         return result
@@ -166,30 +172,61 @@ def process_by_execution_id(exec_id):
     Called when script is executed by the Flask executor.
     Uses execution ID to read bans from a known collection.
     """
-    collection = client1["PROD_BM_ANALYTICS"]["PRB0004863_Identification"]
-    cursor = collection.find({})
-    for count, doc in enumerate(cursor, start=1):
-        ban = doc.get("ban")
-        logging.info(f"[ExecutionID: {exec_id}] Processing BAN #{count}: {ban}")
-        process_ban(ban)
+    count = 0
+
+    try:
+        flag = False
+        startTime = time.time()
+        for order in client['BMP_ORDERMGMT_1'].customerOrder.find():
+
+            ban = order['accountInfo']['ban']
+            print(f"count -->  {count}")
+            print(f"ban --> {ban}")
+            count = count + 1
+            report_dict = check_order_doc(ban)
+            if report_dict != {}:
+                report_dict["ScriptidentificationId"] = str(exec_id)
+
+                reporting(report_dict)
+            currentTime = time.time()
+            if currentTime - startTime >= 30:
+                flag = True
+                startTime = currentTime
+            if flag:
+                check = list(
+                    ScriptCollection.find(
+                        {"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
+                if len(check) != 0:
+                    ScriptCollection.update_one({"_id": check[0]["_id"]},                                                                                       {"$set": {
+"totalProcessedAccounts": count}})
+                else:
+                    ScriptCollection.insert_one(
+                        {"otherDetail": "processedAccounts", "totalProcessedAccounts": count,"ScriptidentificationId":str(exec_id)})
+                flag = False
+
+    except Exception as e:
+        print(f"Exception in main -> {e}")
+        check = list(
+            ScriptCollection.find({"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
+        if len(check) != 0:
+            ScriptCollection.update_one({"_id": check[0]["_id"]},
+                                                                               {"$set": {
+                                                                                   "totalProcessedAccounts": count,
+                                                                                   "Error": str(e)}})
+        else:
+            ScriptCollection.insert_one(
+                {"otherDetail": "processedAccounts", "totalProcessedAccounts": count, "Error": str(e),"ScriptidentificationId":str(exec_id)})
 
 # ===========================
 # Entry Point
 # ===========================
-def main(execution_id=None, source=None, input_file=None, ban=None):
+def main(execution_id=None):
     logging.info(f"Script Execution Started: {datetime.datetime.now()}")
 
     if execution_id:
         # Triggered from Flask executor
         process_by_execution_id(execution_id)
-    elif source == "ban" and ban:
-        process_ban(ban)
-    elif source == "excel":
-        process_excel(input_file or "input_.xlsx")
-    elif source == "db":
-        extract_ban_data()
-    elif source == "pet":
-        process_pet1()
+        return
     else:
         # Interactive mode
         action = input("Enter source of input [ban, excel, db, pet]: ").strip().lower()

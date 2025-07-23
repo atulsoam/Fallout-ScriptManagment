@@ -68,7 +68,12 @@ def connect_with_retry(uri, label="MongoClient"):
 
 # MongoDB URI setup
 connStrDict = {
+    'TEST1': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_1?readPreference=secondaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'TEST2': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_2?readPreference=primaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'TEST4': 'mongodb://BMOM_app:BM_app_Aug!167@vlmddmong01.dev.intranet:26000,vlmddmong02.dev.intranet:26000,vlmddmong03.dev.intranet:26000/BMP_ORDERMGMT_4?readPreference=secondaryPreferred&replicaSet=MONGODB_E2E&authSource=admin&minPoolSize=2',
+    'DEVSI4': 'mongodb://BMOM_app:BM_app_Wd!912@vlmddmong02.dev.intranet:11000/mongodb://BMP_rep:BMP_rep_ctl123@bluem-mongo-prod-01.corp.intranet:14000/BMP_TOMORCHESTRATOR_1?authSource=admin?authSource=admin',
     'PROD': f'mongodb://{final_user}:{final_password}@bluem-mongo-prod-01.corp.intranet:14000/BMP_ORDERMGMT_1?authSource=admin',
+    'DEVSI2': 'mongodb://BMOM_app:BM_app_Wd!912@vlmddmong02.dev.intranet:11000/BMP_ORDERMGMT_2?authSource=admin',
     'PET1': 'mongodb://BMP_dba:BMP_dba_ctl123@vlmddmong04.dev.intranet:24000'
 }
 client = connect_with_retry(connStrDict['PROD'], label="PROD Mongo")
@@ -135,20 +140,20 @@ def check_order_doc(ban):
         logging.error(f"Error processing BAN {ban}: {e}")
         return {}
 
-def process_ban(ban):
+def process_ban(ban,exec_id = None):
     report = check_order_doc(ban)
     if report:
         reporting(report)
 # ===========================
 # Threaded BAN processing with progress count and logging
 # ===========================
-def threaded_process_bans(ban_list, script_collection_name=ScriptCollectionName, max_workers=MAX_WORKERS):
+def threaded_process_bans(ban_list, max_workers=MAX_WORKERS,exec_id=None):
     processed_count = 0
     lock = threading.Lock()
 
     def task(ban):
         nonlocal processed_count
-        process_ban(ban, script_collection_name)
+        process_ban(ban,exec_id)
         with lock:
             processed_count += 1
             print(f"Processed {processed_count}/{len(ban_list)} BANs", end='\r')
@@ -195,12 +200,52 @@ def process_by_execution_id(exec_id):
     Called when script is executed by the Flask executor.
     Uses execution ID to read bans from a known collection.
     """
-    client1 = connect_with_retry(connStrDict['PET1'], label="PET1 Mongo for execution_id")
-    collection = client1["PROD_BM_ANALYTICS"]["PRB0004863_Identification"]
-    cursor = collection.find({})
-    bans = [doc.get("ban") for doc in cursor]
-    client1.close()
-    threaded_process_bans(bans)
+    count = 0
+
+    try:
+        flag = False
+        startTime = time.time()
+        batch = []
+        for order in client['BMP_ORDERMGMT_1'].customerOrder.find():
+
+            ban = order['accountInfo']['ban']
+            print(f"count -->  {count}")
+            print(f"ban --> {ban}")
+            count = count + 1
+            if ban not in batch:
+                batch.append(ban)
+                
+            if len(batch) >= 100:
+                threaded_process_bans(batch,exec_id=exec_id)
+                batch.clear()
+            currentTime = time.time()
+            if currentTime - startTime >= 30:
+                flag = True
+                startTime = currentTime
+            if flag:
+                check = list(
+                    ScriptCollection.find(
+                        {"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
+                if len(check) != 0:
+                    ScriptCollection.update_one({"_id": check[0]["_id"]},                                                                                       {"$set": {
+"totalProcessedAccounts": count}})
+                else:
+                    ScriptCollection.insert_one(
+                        {"otherDetail": "processedAccounts", "totalProcessedAccounts": count,"ScriptidentificationId":str(exec_id)})
+                flag = False
+
+    except Exception as e:
+        print(f"Exception in main -> {e}")
+        check = list(
+            ScriptCollection.find({"otherDetail": "processedAccounts","ScriptidentificationId":str(exec_id)}))
+        if len(check) != 0:
+            ScriptCollection.update_one({"_id": check[0]["_id"]},
+                                                                               {"$set": {
+                                                                                   "totalProcessedAccounts": count,
+                                                                                   "Error": str(e)}})
+        else:
+            ScriptCollection.insert_one(
+                {"otherDetail": "processedAccounts", "totalProcessedAccounts": count, "Error": str(e),"ScriptidentificationId":str(exec_id)})
 
 # ===========================
 # Entry Point
