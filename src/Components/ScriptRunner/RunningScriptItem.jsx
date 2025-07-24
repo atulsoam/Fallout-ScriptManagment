@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LogViewer from './LogViewer';
+import { FaTimesCircle, FaChevronDown, FaChevronUp, FaTerminal } from 'react-icons/fa';
 
 function formatDuration(startTime) {
   const diff = Date.now() - new Date(startTime).getTime();
@@ -24,77 +25,69 @@ export default function RunningScriptItem({ script, logs, onTerminate }) {
   const execId = script.execId;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 transition-all mb-6 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-md border border-gray-200 transition-all overflow-hidden hover:shadow-lg">
       {/* Header */}
-      <div className="flex justify-between items-start p-6 border-b">
-        <div className="flex items-start space-x-4">
-          <span className="w-3 h-3 mt-1 rounded-full bg-green-500 animate-pulse" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b bg-white gap-4">
+        {/* Left: Info */}
+        <div className="flex items-start gap-4">
+          <div className="relative">
+            <span className="w-3 h-3 block rounded-full bg-green-500 animate-pulse" />
+            <span className="absolute -left-1 -top-1 bg-white text-xs font-semibold text-green-600 px-1 rounded">
+              ●
+            </span>
+          </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <FaTerminal className="text-blue-500" />
               {scriptName}
             </h2>
 
-            <div className="text-sm text-gray-500">
-              <p>Started: <span className="font-medium">{new Date(script.StartedAt).toLocaleString()}</span></p>
-              <p className="text-gray-400 animate-pulse">Running for: {duration}</p>
+            <div className="text-sm text-gray-500 space-y-0.5">
+              <p>
+                <strong className="text-gray-700">Started:</strong>{' '}
+                {new Date(script.StartedAt).toLocaleString()}
+              </p>
+              <p className="text-blue-500 font-medium animate-pulse">
+                Running for: {duration}
+              </p>
               {script.scriptName && (
-                <p className="text-xs italic text-gray-500">Script ref: {script.scriptName}</p>
+                <p className="text-xs italic text-gray-400">
+                  Script ref: {script.scriptName}
+                </p>
               )}
-            </div>
-
-            <div className="mt-2">
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+              <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                 Exec ID: {execId}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col items-end space-y-2">
-          
-
+        {/* Right: Actions */}
+        <div className="flex flex-col md:items-end items-start gap-2">
           <button
             onClick={() => onTerminate(execId)}
-            className="inline-flex items-center text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded shadow-sm transition"
+            className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md font-medium shadow transition"
           >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <FaTimesCircle className="w-4 h-4" />
             Terminate
           </button>
+
           <button
             onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition"
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition font-medium"
           >
             {expanded ? 'Hide Logs' : 'Show Logs'}
-            <svg
-              className={`ml-1 w-4 h-4 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path d="M19 9l-7 7-7-7" />
-            </svg>
+            {expanded ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
-      {/* Log Panel */}
+      {/* Log Viewer (Expandable) */}
       <div
-        className={`transition-all duration-300 ease-in-out ${
-          expanded ? 'max-h-[500px] p-4' : 'max-h-0 overflow-hidden'
-        } bg-gray-50 border-t`}
-        id={`logs-${execId}`}
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          expanded ? 'max-h-[500px] p-4 bg-gray-50 border-t' : 'max-h-0'
+        }`}
       >
         <LogViewer logs={logs} />
       </div>

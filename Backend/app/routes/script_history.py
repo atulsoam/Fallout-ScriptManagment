@@ -150,6 +150,7 @@ def script_history():
         result = []
         for doc in cursor:
             fixed = not_fixed = total = processed = 0
+            ScriptError = "NA"
             try:
                 if doc.get("status") == "Running":
                     fixed, not_fixed, total, processed = getcollectionDetails(
@@ -161,6 +162,7 @@ def script_history():
                     not_fixed = status_list.get("Not Fixed", 0)
                     total = status_list.get("Total", 0)
                     processed = status_list.get("processedAccounts", 0)
+                    ScriptError = status_list.get("error","NA")
             except Exception:
                 # In case getcollectionDetails or field access fails
                 pass
@@ -180,6 +182,7 @@ def script_history():
                 "total": total,
                 "processed": processed,
                 "duration": float(doc.get("Duration", 0)),
+                "ScriptError":ScriptError
             })
 
         # --- Fetch Distinct Values for Filters ---

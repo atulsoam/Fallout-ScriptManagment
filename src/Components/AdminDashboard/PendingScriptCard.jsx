@@ -6,7 +6,8 @@ import {
     DocumentTextIcon,
     UserIcon,
     ClockIcon,
-    TagIcon, AdjustmentsHorizontalIcon
+    TagIcon,
+    AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/solid';
 import ViewCodeModal from '../ScriptUploader/ViewCodeModal';
 
@@ -14,77 +15,67 @@ export default function PendingScriptCard({ script, onApprove, onReject }) {
     const [showCode, setShowCode] = useState(false);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all border border-gray-200 p-5 flex flex-col justify-between h-full">
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-800">{script.name}</h3>
-                    <span className="text-xs font-medium bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                        {script.status || 'Pending'}
-                    </span>
-                </div>
+        <div className="bg-white rounded-xl shadow border border-gray-200 p-5 flex flex-col h-full w-full max-w-full overflow-hidden">
+            {/* Header */}
+            <div className="flex justify-between items-start flex-wrap gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 break-words max-w-full">
+                    {script.name}
+                </h3>
+                <span className="text-xs font-medium bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                    {script.status || 'Pending'}
+                </span>
+            </div>
 
-                <p className="text-sm text-gray-600 flex items-center">
-                    <DocumentTextIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    <span className="font-medium text-gray-700">{script.scriptType}</span>
-                </p>
-                <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <TagIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    Type: <span className="text-gray-800 font-medium ml-1">{script.scriptType}</span>
-                </p>
-                <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                    <AdjustmentsHorizontalIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    Subtype: <span className="text-gray-800 font-medium ml-1">{script.scriptSubType}</span>
-                </p>
-
-
-
-                <p className="text-sm text-gray-600 flex items-center">
-                    <UserIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    Uploaded by: <span className="ml-1 text-gray-800 font-medium">{script.uploadedBy}</span>
-                </p>
-
-                <p className="text-sm text-gray-600 flex items-center">
-                    <ClockIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    Requested on:{" "}
-                    <span className="ml-1 text-gray-800 font-medium">
-                        {new Date(script.uploadedAt || script.createdAt).toLocaleString()}
-                    </span>
-                </p>
+            {/* Body Content */}
+            <div className="space-y-3 text-sm text-gray-700 flex-1 overflow-hidden">
+                <InfoRow icon={DocumentTextIcon} label="Script Type" value={script.scriptType} />
+                <InfoRow icon={TagIcon} label="Type" value={script.scriptType} />
+                <InfoRow icon={AdjustmentsHorizontalIcon} label="Subtype" value={script.scriptSubType} />
+                <InfoRow icon={UserIcon} label="Uploaded by" value={script.uploadedBy} />
+                <InfoRow
+                    icon={ClockIcon}
+                    label="Requested on"
+                    value={new Date(script.uploadedAt || script.createdAt).toLocaleString()}
+                />
 
                 {script.description && (
-                    <p className="text-sm text-gray-500 mt-2">
-                        <span className="font-semibold text-gray-700">Description:</span> {script.description}
-                    </p>
+                    <div className="mt-2 max-h-32 overflow-auto pr-1">
+                        <p className="text-gray-700 break-words whitespace-pre-wrap text-sm">
+                            <span className="font-semibold">Description:</span> {script.description}
+                        </p>
+                    </div>
                 )}
             </div>
 
-            <div className="flex justify-between items-center mt-5">
+            {/* Footer Actions */}
+            <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <button
                     onClick={() => setShowCode(true)}
-                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center transition"
                 >
                     <EyeIcon className="h-4 w-4 mr-1" />
                     View Code
                 </button>
 
-                <div className="space-x-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <button
                         onClick={onApprove}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+                        className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md w-full sm:w-auto"
                     >
-                        <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        <CheckCircleIcon className="h-5 w-5 mr-1" />
                         Approve
                     </button>
                     <button
                         onClick={onReject}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+                        className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md w-full sm:w-auto"
                     >
-                        <XCircleIcon className="h-4 w-4 mr-1" />
+                        <XCircleIcon className="h-5 w-5 mr-1" />
                         Reject
                     </button>
                 </div>
             </div>
 
+            {/* Modal */}
             {showCode && (
                 <ViewCodeModal
                     scriptName={script.name}
@@ -92,6 +83,18 @@ export default function PendingScriptCard({ script, onApprove, onReject }) {
                     onClose={() => setShowCode(false)}
                 />
             )}
+        </div>
+    );
+}
+
+function InfoRow({ icon: Icon, label, value }) {
+    return (
+        <div className="flex items-start gap-2 text-gray-700 break-words">
+            <Icon className="h-4 w-4 text-gray-500 mt-0.5 shrink-0" />
+            <div>
+                <span className="text-gray-600">{label}:</span>{' '}
+                <span className="font-medium">{value}</span>
+            </div>
         </div>
     );
 }
